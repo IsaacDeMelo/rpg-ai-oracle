@@ -126,7 +126,11 @@ const App: React.FC = () => {
           </div>
 
           <div className={activeView === 'characters' ? 'block' : 'hidden'}>
-            <CharactersView characters={characters} setCharacters={setCharacters} />
+            <CharactersView 
+              characters={characters} 
+              setCharacters={setCharacters} 
+              worldLore={worldLore}
+            />
           </div>
 
           <div className={activeView === 'world' ? 'block' : 'hidden'}>
