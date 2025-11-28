@@ -190,7 +190,7 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
         
         {/* The "Paper" */}
         <div className={`
-            relative w-full max-w-6xl min-h-[90vh] bg-[#f5f5f4] shadow-[0_0_50px_rgba(0,0,0,0.8)] 
+            relative w-full h-full min-h-[90vh] bg-[#f5f5f4] shadow-[0_0_50px_rgba(0,0,0,0.8)] 
             flex flex-col border-l-[12px] border-stone-800/20 rounded-r-md overflow-hidden
             page-flip-container
             ${isFlipping ? (direction === 'next' ? 'flipping-next' : 'flipping-prev') : ''}
@@ -215,7 +215,7 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
 
                 {/* Main Text Area */}
                 <textarea 
-                    className="flex-1 w-full bg-transparent resize-none focus:outline-none text-stone-900 font-serif text-lg leading-relaxed custom-scrollbar placeholder-stone-400/50"
+                    className="flex-1 w-full bg-transparent resize-none focus:outline-none text-stone-900 font-serif text-xl leading-relaxed custom-scrollbar placeholder-stone-400/50"
                     placeholder="A tinta aguarda..."
                     value={currentPage.content}
                     onChange={(e) => handleUpdate('content', e.target.value)}

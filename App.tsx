@@ -26,6 +26,15 @@ const App: React.FC = () => {
     setWorldLore(prev => prev ? prev + newEntry : newEntry);
   };
 
+  // Dynamic styles based on active view to maximize writing space
+  const mainContainerClass = activeView === 'story' 
+    ? "ml-20 md:ml-64 p-2 md:p-4 min-h-screen transition-all duration-300 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-stone-800 via-stone-950 to-black"
+    : "ml-20 md:ml-64 p-6 md:p-10 min-h-screen transition-all duration-300 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-stone-800 via-stone-950 to-black";
+
+  const contentWrapperClass = activeView === 'story'
+    ? "mx-auto w-full max-w-[1800px]"
+    : "max-w-7xl mx-auto";
+
   return (
     <div className="min-h-screen text-stone-200 font-sans selection:bg-amber-900/50">
       <SystemLog />
@@ -106,8 +115,8 @@ const App: React.FC = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="ml-20 md:ml-64 p-6 md:p-10 min-h-screen transition-all duration-300 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-stone-800 via-stone-950 to-black">
-        <div className="max-w-7xl mx-auto">
+      <main className={mainContainerClass}>
+        <div className={contentWrapperClass}>
           {/* 
             IMPLEMENTAÇÃO KEEP-ALIVE:
             Renderizamos todas as views, mas escondemos as inativas com CSS.
