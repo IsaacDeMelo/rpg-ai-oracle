@@ -1,0 +1,5 @@
+{
+  "name": "RPG World Forge",
+  "description": "Um gerenciador de construção de mundo para RPG com registro de personagens, locais e simulador de roleplay alimentado por IA (Gemini).",
+  "requestFramePermissions": []
+}
