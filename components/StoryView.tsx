@@ -147,7 +147,7 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
   };
 
   return (
-    <div className="flex flex-col h-full relative" style={{ perspective: '2000px' }}>
+    <div className="flex flex-col h-full w-full relative" style={{ perspective: '2000px' }}>
       
       {/* Styles for specialized animations */}
       <style>{`
@@ -186,7 +186,7 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
       </div>
 
       {/* Desk Surface / Book Container */}
-      <div className={`flex-1 relative flex flex-col items-center justify-start transition-all duration-700 ${hasOpened ? 'book-enter-active' : 'book-enter'}`}>
+      <div className={`flex-1 w-full relative flex flex-col items-center justify-start transition-all duration-700 ${hasOpened ? 'book-enter-active' : 'book-enter'}`}>
         
         {/* The "Paper" */}
         <div className={`
@@ -202,7 +202,7 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
             <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-stone-400/50 to-transparent z-10 pointer-events-none"></div>
 
             {/* Content Area (Z-20) */}
-            <div className="relative z-20 flex flex-col h-full p-8 md:p-12 pb-24">
+            <div className="relative z-20 flex flex-col h-full w-full p-8 md:p-12 lg:p-16 pb-24 max-w-none">
                 
                 {/* Title Input */}
                 <input 
@@ -215,7 +215,7 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
 
                 {/* Main Text Area */}
                 <textarea 
-                    className="flex-1 w-full bg-transparent resize-none focus:outline-none text-stone-900 font-serif text-xl leading-relaxed custom-scrollbar placeholder-stone-400/50"
+                    className="flex-1 w-full max-w-none bg-transparent resize-none focus:outline-none text-stone-900 font-serif text-xl leading-relaxed custom-scrollbar placeholder-stone-400/50"
                     placeholder="A tinta aguarda..."
                     value={currentPage.content}
                     onChange={(e) => handleUpdate('content', e.target.value)}
