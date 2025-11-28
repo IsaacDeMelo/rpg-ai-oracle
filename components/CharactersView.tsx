@@ -1,7 +1,7 @@
 
-import React, { useState, useRef } from 'react';
-import { Character, Attribute, Item, Skill } from '../types';
-import { Trash2, Plus, Save, User, Swords, X, Shield, Zap, Scroll, Download, Upload, Sparkles, Coins, Package, Flame, Eye, PenTool } from 'lucide-react';
+import React, { useState, useRef, useMemo } from 'react';
+import { Character, Attribute, Item, Skill, Relationship } from '../types';
+import { Trash2, Plus, Save, User, Swords, X, Shield, Zap, Scroll, Download, Upload, Sparkles, Coins, Package, Flame, Eye, PenTool, Search, LayoutGrid, List, Heart, Link as LinkIcon, Users } from 'lucide-react';
 import { updateCharacterBackstory } from '../services/geminiService';
 
 interface CharactersViewProps {
@@ -13,6 +13,8 @@ interface CharactersViewProps {
 const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacters, worldLore }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   // View Only State
   const [viewingId, setViewingId] = useState<string | null>(null);
@@ -36,6 +38,7 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
   // Complex State
   const [items, setItems] = useState<Item[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [relationships, setRelationships] = useState<Relationship[]>([]);
 
   // Temp Item Input State
   const [newItemName, setNewItemName] = useState('');
@@ -49,6 +52,11 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
   const [newSkillImg, setNewSkillImg] = useState('');
   const [newSkillDesc, setNewSkillDesc] = useState('');
 
+  // Temp Relationship Input State
+  const [newRelTargetId, setNewRelTargetId] = useState('');
+  const [newRelType, setNewRelType] = useState('');
+  const [newRelAffinity, setNewRelAffinity] = useState(50);
+
   const resetForm = () => {
     setName('');
     setRace('');
@@ -60,9 +68,11 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
     setAttributes([{ key: 'Força', value: '10' }]);
     setItems([]);
     setSkills([]);
+    setRelationships([]);
     
     setNewItemName(''); setNewItemQty(1); setNewItemImg(''); setNewItemDesc('');
     setNewSkillName(''); setNewSkillCost(''); setNewSkillImg(''); setNewSkillDesc('');
+    setNewRelTargetId(''); setNewRelType(''); setNewRelAffinity(50);
     
     setEditingId(null);
     setIsEditing(false);
@@ -98,6 +108,7 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
 
     setItems(migratedItems);
     setSkills(migratedSkills);
+    setRelationships(char.relationships || []);
     
     setEditingId(char.id);
     setIsEditing(true);
@@ -127,7 +138,8 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
       voiceNotes,
       attributes: attributes.filter(a => a.key.trim() !== ''),
       items,
-      skills
+      skills,
+      relationships
     };
 
     if (editingId) {
@@ -170,6 +182,21 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
 
   const handleRemoveSkill = (id: string) => setSkills(skills.filter(s => s.id !== id));
 
+  const handleAddRelationship = () => {
+      if (!newRelTargetId || !newRelType) return;
+      const newRel: Relationship = {
+          targetId: newRelTargetId,
+          type: newRelType,
+          affinity: newRelAffinity
+      };
+      setRelationships([...relationships, newRel]);
+      setNewRelTargetId(''); setNewRelType(''); setNewRelAffinity(50);
+  };
+
+  const handleRemoveRelationship = (targetId: string) => {
+      setRelationships(relationships.filter(r => r.targetId !== targetId));
+  };
+
   // --- Attributes Helpers ---
   const addAttribute = () => setAttributes([...attributes, { key: '', value: '' }]);
   const updateAttribute = (index: number, field: 'key' | 'value', val: string) => {
@@ -210,7 +237,7 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
     if (!name) return;
     setIsSyncing(true);
     const others = characters.filter(c => c.id !== editingId).map(c => c.name).join(', ');
-    const current: Character = { id: 'temp', name, race, height, money, description, imageUrl, voiceNotes, attributes, items, skills };
+    const current: Character = { id: 'temp', name, race, height, money, description, imageUrl, voiceNotes, attributes, items, skills, relationships };
     const result = await updateCharacterBackstory(current, worldLore, others);
     if (result && window.confirm("Substituir história atual pela versão da IA?")) setDescription(result);
     setIsSyncing(false);
@@ -228,6 +255,15 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
       finally { setSyncingIds(prev => { const n = new Set(prev); n.delete(char.id); return n; }); }
   };
 
+  // Filter Logic
+  const filteredCharacters = useMemo(() => {
+      return characters.filter(c => 
+          c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+          c.race.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+  }, [characters, searchTerm]);
+
   // --- VIEW MODE MODAL ---
   const ViewingModal = () => {
       const char = characters.find(c => c.id === viewingId);
@@ -236,6 +272,7 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
       // Ensure types for rendering
       const viewItems: Item[] = (char.items || []).map(i => typeof i === 'string' ? { id: i, name: i, quantity: 1, description: '', imageUrl: '' } : i);
       const viewSkills: Skill[] = (char.skills || []).map(s => typeof s === 'string' ? { id: s, name: s, cost: '', description: '', imageUrl: '', type: 'active' } : s);
+      const viewRels = char.relationships || [];
 
       return (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setViewingId(null)}>
@@ -277,6 +314,29 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
                                </div>
                            </div>
                            
+                           {/* Relationships View in Sidebar */}
+                           {viewRels.length > 0 && (
+                               <div>
+                                   <h3 className="text-stone-500 font-bold uppercase tracking-widest text-xs mb-3 border-b border-stone-800 pb-1 flex items-center gap-2"><Heart size={12}/> Vínculos</h3>
+                                   <div className="space-y-2">
+                                       {viewRels.map((rel, i) => {
+                                           const target = characters.find(c => c.id === rel.targetId);
+                                           return (
+                                               <div key={i} className="flex items-center gap-2 bg-stone-800/30 p-2 rounded text-xs cursor-pointer hover:bg-stone-800 transition" onClick={() => setViewingId(rel.targetId)}>
+                                                   <div className="w-6 h-6 rounded-full bg-stone-700 overflow-hidden shrink-0">
+                                                        {target ? <img src={target.imageUrl} className="w-full h-full object-cover"/> : <User size={14} className="m-1"/>}
+                                                   </div>
+                                                   <div>
+                                                       <p className="text-stone-300 font-bold">{target?.name || 'Desconhecido'}</p>
+                                                       <p className="text-stone-500">{rel.type} <span className="text-[9px] opacity-70">• {rel.affinity}%</span></p>
+                                                   </div>
+                                               </div>
+                                           )
+                                       })}
+                                   </div>
+                               </div>
+                           )}
+
                            {char.voiceNotes && (
                                <div>
                                    <h3 className="text-stone-500 font-bold uppercase tracking-widest text-xs mb-3 border-b border-stone-800 pb-1">Personalidade (IA)</h3>
@@ -515,7 +575,7 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
                  </div>
               </div>
 
-              <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+              <div className="space-y-3 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
                   {skills.map(skill => (
                       <div key={skill.id} className="flex gap-3 bg-stone-900 p-2 rounded border border-stone-800 relative group hover:border-violet-600/50 transition">
                           <div className="w-12 h-12 bg-black rounded border border-stone-700 overflow-hidden flex-shrink-0">
@@ -532,6 +592,60 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
                       </div>
                   ))}
               </div>
+            </div>
+
+            {/* Relationships Manager */}
+            <div className="bg-stone-950/60 p-5 rounded border border-stone-800">
+                <label className="text-sm text-pink-500 font-cinzel font-bold mb-3 flex items-center gap-2"><LinkIcon size={16}/> Relacionamentos & Vínculos</label>
+                
+                 <div className="bg-stone-900/80 p-3 rounded mb-4 border border-stone-800 grid grid-cols-12 gap-2 items-end">
+                     <div className="col-span-4">
+                        <label className="text-[9px] uppercase text-stone-500 block">Personagem</label>
+                        <select value={newRelTargetId} onChange={e => setNewRelTargetId(e.target.value)} className="w-full bg-stone-800 border-stone-700 rounded px-2 py-1 text-xs text-stone-300">
+                            <option value="">Selecione...</option>
+                            {characters.filter(c => c.id !== editingId).map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                     </div>
+                     <div className="col-span-4">
+                        <label className="text-[9px] uppercase text-stone-500 block">Tipo de Vínculo</label>
+                        <input type="text" value={newRelType} onChange={e => setNewRelType(e.target.value)} className="w-full bg-stone-800 border-stone-700 rounded px-2 py-1 text-xs text-white" placeholder="Irmão, Rival..." />
+                     </div>
+                     <div className="col-span-3">
+                        <label className="text-[9px] uppercase text-stone-500 block">Intimidade (%)</label>
+                        <input type="number" min="-100" max="100" value={newRelAffinity} onChange={e => setNewRelAffinity(parseInt(e.target.value))} className="w-full bg-stone-800 border-stone-700 rounded px-2 py-1 text-xs text-white" />
+                     </div>
+                     <div className="col-span-1">
+                        <button onClick={handleAddRelationship} disabled={!newRelTargetId} className="w-full h-full bg-pink-900 hover:bg-pink-700 text-white rounded flex items-center justify-center transition disabled:opacity-50"><Plus size={16}/></button>
+                     </div>
+                 </div>
+
+                 <div className="space-y-2">
+                     {relationships.map((rel, i) => {
+                         const targetChar = characters.find(c => c.id === rel.targetId);
+                         return (
+                             <div key={i} className="flex items-center justify-between bg-stone-900 p-2 rounded border border-stone-800 text-xs">
+                                 <div className="flex items-center gap-3">
+                                     <div className="w-8 h-8 rounded-full bg-stone-800 overflow-hidden">
+                                         {targetChar ? <img src={targetChar.imageUrl} className="w-full h-full object-cover"/> : <User size={12}/>}
+                                     </div>
+                                     <div>
+                                         <p className="font-bold text-stone-300">{targetChar?.name || 'Desconhecido'}</p>
+                                         <p className="text-pink-400">{rel.type}</p>
+                                     </div>
+                                 </div>
+                                 <div className="flex items-center gap-4">
+                                     <div className="text-right">
+                                         <span className="block text-[10px] text-stone-500 uppercase">Afinidade</span>
+                                         <span className={`font-mono font-bold ${rel.affinity > 0 ? 'text-green-400' : 'text-red-400'}`}>{rel.affinity}%</span>
+                                     </div>
+                                     <button onClick={() => handleRemoveRelationship(rel.targetId)} className="text-stone-600 hover:text-red-500"><Trash2 size={14}/></button>
+                                 </div>
+                             </div>
+                         )
+                     })}
+                 </div>
             </div>
 
           </div>
@@ -552,97 +666,190 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
       {/* Renders the modal if a character is being viewed */}
       {viewingId && <ViewingModal />}
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b-2 border-amber-900/30 pb-4 gap-4">
-        <div>
-           <h2 className="text-4xl font-black font-cinzel text-stone-100 drop-shadow-sm">Galeria de Heróis</h2>
-           <p className="text-stone-500 font-cinzel text-sm mt-1">Gerencie as almas que habitam este mundo</p>
+      <div className="flex flex-col gap-6 border-b-2 border-amber-900/30 pb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+            <h2 className="text-4xl font-black font-cinzel text-stone-100 drop-shadow-sm">Galeria de Heróis</h2>
+            <p className="text-stone-500 font-cinzel text-sm mt-1">Gerencie as almas que habitam este mundo</p>
+            </div>
+            
+            <div className="flex gap-3">
+            <input type="file" ref={fileInputRef} onChange={handleImportJSON} className="hidden" accept=".json" />
+            <button onClick={() => fileInputRef.current?.click()} className="bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-400 hover:text-stone-200 px-4 py-3 rounded flex items-center gap-2 transition shadow-lg"><Upload size={18} /> <span className="font-cinzel text-sm hidden md:inline">Importar</span></button>
+            <button onClick={handleExportJSON} className="bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-400 hover:text-stone-200 px-4 py-3 rounded flex items-center gap-2 transition shadow-lg"><Download size={18} /> <span className="font-cinzel text-sm hidden md:inline">Exportar</span></button>
+            <button onClick={() => setIsEditing(true)} className="bg-stone-800 hover:bg-stone-700 border border-amber-900/50 text-amber-500 px-5 py-3 rounded flex items-center gap-2 transition shadow-lg hover:shadow-amber-900/20 group"><Plus size={20} className="group-hover:rotate-90 transition-transform duration-300"/> <span className="font-cinzel font-bold">Criar</span></button>
+            </div>
         </div>
-        
-        <div className="flex gap-3">
-          <input type="file" ref={fileInputRef} onChange={handleImportJSON} className="hidden" accept=".json" />
-          <button onClick={() => fileInputRef.current?.click()} className="bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-400 hover:text-stone-200 px-4 py-3 rounded flex items-center gap-2 transition shadow-lg"><Upload size={18} /> <span className="font-cinzel text-sm hidden md:inline">Importar</span></button>
-          <button onClick={handleExportJSON} className="bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-400 hover:text-stone-200 px-4 py-3 rounded flex items-center gap-2 transition shadow-lg"><Download size={18} /> <span className="font-cinzel text-sm hidden md:inline">Exportar</span></button>
-          <button onClick={() => setIsEditing(true)} className="bg-stone-800 hover:bg-stone-700 border border-amber-900/50 text-amber-500 px-5 py-3 rounded flex items-center gap-2 transition shadow-lg hover:shadow-amber-900/20 group"><Plus size={20} className="group-hover:rotate-90 transition-transform duration-300"/> <span className="font-cinzel font-bold">Criar</span></button>
+
+        {/* Search & Layout Control Bar */}
+        <div className="bg-stone-900/50 p-3 rounded border border-stone-800 flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="relative w-full md:w-96 group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-600 group-focus-within:text-amber-500 transition-colors" size={18} />
+                <input 
+                    type="text" 
+                    placeholder="Buscar por nome, raça ou título..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-stone-950 border border-stone-700 rounded-full py-2 pl-10 pr-4 text-stone-200 focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-900 transition-all font-sans text-sm"
+                />
+            </div>
+
+            <div className="flex items-center gap-2 bg-stone-950 rounded-lg p-1 border border-stone-800">
+                <button 
+                    onClick={() => setViewMode('grid')}
+                    className={`p-2 rounded transition ${viewMode === 'grid' ? 'bg-stone-800 text-amber-500 shadow' : 'text-stone-500 hover:text-stone-300'}`}
+                    title="Visualização em Grade"
+                >
+                    <LayoutGrid size={18} />
+                </button>
+                <button 
+                    onClick={() => setViewMode('list')}
+                    className={`p-2 rounded transition ${viewMode === 'list' ? 'bg-stone-800 text-amber-500 shadow' : 'text-stone-500 hover:text-stone-300'}`}
+                    title="Visualização em Lista Compacta"
+                >
+                    <List size={18} />
+                </button>
+            </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-        {characters.length === 0 && (
+      {filteredCharacters.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center py-24 bg-stone-900/30 rounded-lg border-2 border-dashed border-stone-800">
-            <User size={64} className="text-stone-700 mb-6" />
-            <p className="text-stone-400 text-xl font-cinzel">Nenhum herói encontrado.</p>
+            {searchTerm ? (
+                <>
+                    <Search size={64} className="text-stone-700 mb-6" />
+                    <p className="text-stone-400 text-xl font-cinzel">Nenhum resultado para "{searchTerm}".</p>
+                </>
+            ) : (
+                <>
+                    <Users size={64} className="text-stone-700 mb-6" />
+                    <p className="text-stone-400 text-xl font-cinzel">Nenhum herói encontrado.</p>
+                </>
+            )}
           </div>
-        )}
-
-        {characters.map(char => (
-          <div key={char.id} className="bg-stone-900 group relative rounded-sm shadow-xl overflow-hidden transition-all duration-300 hover:-translate-y-1 border border-stone-800 hover:border-amber-600/50">
-            {/* Click to View */}
-            <div onClick={() => handleView(char.id)} className="cursor-pointer">
-                <div className="h-64 overflow-hidden relative border-b-4 border-amber-900/80">
-                <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover group-hover:scale-110 transition duration-700 filter grayscale-[20%] group-hover:grayscale-0" onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/400/200?grayscale'; }} />
-                <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-transparent to-transparent opacity-90" />
-                
-                {/* View Icon Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-500 bg-black/20 backdrop-blur-[2px]">
-                    <Eye size={48} className="text-white drop-shadow-lg" />
-                </div>
-
-                <div className="absolute bottom-0 left-0 w-full p-4">
-                    <h3 className="text-2xl font-bold text-stone-100 font-cinzel drop-shadow-md">{char.name}</h3>
-                    <div className="flex justify-between items-end">
-                        {(char.race || char.height) && (
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className="h-px w-6 bg-amber-500/50 inline-block"></span>
-                            <p className="text-amber-500 text-xs font-bold uppercase tracking-widest font-sans">{char.race}</p>
-                        </div>
-                        )}
-                        {char.money && (
-                            <div className="flex items-center gap-1 text-amber-300 bg-black/40 px-2 py-0.5 rounded border border-amber-900/30">
-                                <Coins size={10} /> <span className="text-xs font-mono">{char.money}</span>
+      ) : (
+          <>
+            {/* GRID VIEW */}
+            {viewMode === 'grid' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                    {filteredCharacters.map(char => (
+                    <div key={char.id} className="bg-stone-900 group relative rounded-sm shadow-xl overflow-hidden transition-all duration-300 hover:-translate-y-1 border border-stone-800 hover:border-amber-600/50">
+                        {/* Click to View */}
+                        <div onClick={() => handleView(char.id)} className="cursor-pointer">
+                            <div className="h-64 overflow-hidden relative border-b-4 border-amber-900/80">
+                            <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover group-hover:scale-110 transition duration-700 filter grayscale-[20%] group-hover:grayscale-0" onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/400/200?grayscale'; }} />
+                            <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-transparent to-transparent opacity-90" />
+                            
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-500 bg-black/20 backdrop-blur-[2px]">
+                                <Eye size={48} className="text-white drop-shadow-lg" />
                             </div>
-                        )}
-                    </div>
-                </div>
-                </div>
-                
-                <div className="p-5 space-y-4">
-                <p className="text-stone-400 text-sm leading-relaxed line-clamp-3 italic font-serif">"{char.description}"</p>
-                
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                    {char.attributes.slice(0, 4).map((attr, idx) => (
-                    <div key={idx} className="bg-black/20 p-2 rounded border border-stone-800 flex justify-between items-center">
-                        <span className="text-stone-500 text-[10px] uppercase font-bold tracking-wider">{attr.key.slice(0,8)}</span>
-                        <span className="text-amber-100 font-mono font-bold">{attr.value}</span>
+
+                            <div className="absolute bottom-0 left-0 w-full p-4">
+                                <h3 className="text-2xl font-bold text-stone-100 font-cinzel drop-shadow-md">{char.name}</h3>
+                                <div className="flex justify-between items-end">
+                                    {(char.race || char.height) && (
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="h-px w-6 bg-amber-500/50 inline-block"></span>
+                                        <p className="text-amber-500 text-xs font-bold uppercase tracking-widest font-sans">{char.race}</p>
+                                    </div>
+                                    )}
+                                    {char.money && (
+                                        <div className="flex items-center gap-1 text-amber-300 bg-black/40 px-2 py-0.5 rounded border border-amber-900/30">
+                                            <Coins size={10} /> <span className="text-xs font-mono">{char.money}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            </div>
+                            
+                            <div className="p-5 space-y-4">
+                            <p className="text-stone-400 text-sm leading-relaxed line-clamp-3 italic font-serif">"{char.description}"</p>
+                            
+                            <div className="grid grid-cols-2 gap-3 pt-2">
+                                {char.attributes.slice(0, 4).map((attr, idx) => (
+                                <div key={idx} className="bg-black/20 p-2 rounded border border-stone-800 flex justify-between items-center">
+                                    <span className="text-stone-500 text-[10px] uppercase font-bold tracking-wider">{attr.key.slice(0,8)}</span>
+                                    <span className="text-amber-100 font-mono font-bold">{attr.value}</span>
+                                </div>
+                                ))}
+                            </div>
+
+                            {/* Relationship Preview Indicator */}
+                            {char.relationships && char.relationships.length > 0 && (
+                                <div className="flex items-center gap-2 pt-2 border-t border-stone-800/50">
+                                    <Heart size={12} className="text-pink-700" />
+                                    <span className="text-xs text-stone-500">{char.relationships.length} Vínculos</span>
+                                </div>
+                            )}
+
+                            {/* Mini Inventory Preview */}
+                            {char.items && char.items.length > 0 && typeof char.items[0] !== 'string' && (
+                                <div className="flex gap-1 overflow-hidden pt-2 h-10">
+                                    {(char.items as Item[]).slice(0,6).map((item, i) => (
+                                        <div key={i} className="aspect-square h-full bg-stone-950 border border-stone-800 rounded flex items-center justify-center relative" title={`${item.name} (x${item.quantity})`}>
+                                            {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover opacity-70"/> : <div className="w-1 h-1 bg-stone-700 rounded-full"/>}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between items-center pt-2 pb-4 px-5 border-t border-stone-800 bg-stone-950/50">
+                            <button onClick={() => handleQuickSync(char)} disabled={syncingIds.has(char.id)} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded transition border border-transparent ${!worldLore ? 'text-stone-600 cursor-not-allowed' : 'text-violet-400 hover:bg-violet-900/20'}`}>
+                                <Sparkles size={14} className={syncingIds.has(char.id) ? "animate-spin" : ""} /> {syncingIds.has(char.id) ? "..." : "Sincronizar"}
+                            </button>
+                            <div className="flex gap-1">
+                                <button onClick={() => handleView(char.id)} className="p-2 text-stone-500 hover:text-stone-200 transition hover:bg-stone-800 rounded" title="Visualizar Ficha"><Eye size={18} /></button>
+                                <button onClick={() => handleEdit(char)} className="p-2 text-stone-500 hover:text-amber-500 transition hover:bg-stone-800 rounded" title="Editar"><Swords size={18} /></button>
+                                <button onClick={() => handleDelete(char.id)} className="p-2 text-stone-500 hover:text-red-500 transition hover:bg-stone-800 rounded" title="Excluir"><Trash2 size={18} /></button>
+                            </div>
+                        </div>
                     </div>
                     ))}
                 </div>
+            )}
 
-                {/* Mini Inventory Preview */}
-                {char.items && char.items.length > 0 && typeof char.items[0] !== 'string' && (
-                    <div className="flex gap-1 overflow-hidden pt-2 h-10">
-                        {(char.items as Item[]).slice(0,6).map((item, i) => (
-                            <div key={i} className="aspect-square h-full bg-stone-950 border border-stone-800 rounded flex items-center justify-center relative" title={`${item.name} (x${item.quantity})`}>
-                                {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover opacity-70"/> : <div className="w-1 h-1 bg-stone-700 rounded-full"/>}
+            {/* LIST VIEW */}
+            {viewMode === 'list' && (
+                <div className="flex flex-col gap-2">
+                    {filteredCharacters.map(char => (
+                        <div key={char.id} className="bg-stone-900 border border-stone-800 p-2 rounded flex items-center gap-4 hover:border-amber-700/50 transition group">
+                            <div className="w-12 h-12 shrink-0 rounded overflow-hidden bg-stone-950 border border-stone-700 cursor-pointer" onClick={() => handleView(char.id)}>
+                                <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover" />
                             </div>
-                        ))}
-                    </div>
-                )}
-                </div>
-            </div>
+                            
+                            <div className="flex-1 cursor-pointer" onClick={() => handleView(char.id)}>
+                                <h3 className="text-stone-200 font-cinzel font-bold text-lg leading-none">{char.name}</h3>
+                                <div className="text-xs text-stone-500 flex items-center gap-2">
+                                    <span className="text-amber-600">{char.race}</span>
+                                    {char.money && <span>• {char.money}</span>}
+                                </div>
+                            </div>
 
-            <div className="flex justify-between items-center pt-2 pb-4 px-5 border-t border-stone-800 bg-stone-950/50">
-                  <button onClick={() => handleQuickSync(char)} disabled={syncingIds.has(char.id)} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded transition border border-transparent ${!worldLore ? 'text-stone-600 cursor-not-allowed' : 'text-violet-400 hover:bg-violet-900/20'}`}>
-                    <Sparkles size={14} className={syncingIds.has(char.id) ? "animate-spin" : ""} /> {syncingIds.has(char.id) ? "..." : "Sincronizar"}
-                  </button>
-                  <div className="flex gap-1">
-                    <button onClick={() => handleView(char.id)} className="p-2 text-stone-500 hover:text-stone-200 transition hover:bg-stone-800 rounded" title="Visualizar Ficha"><Eye size={18} /></button>
-                    <button onClick={() => handleEdit(char)} className="p-2 text-stone-500 hover:text-amber-500 transition hover:bg-stone-800 rounded" title="Editar"><Swords size={18} /></button>
-                    <button onClick={() => handleDelete(char.id)} className="p-2 text-stone-500 hover:text-red-500 transition hover:bg-stone-800 rounded" title="Excluir"><Trash2 size={18} /></button>
-                  </div>
-              </div>
-          </div>
-        ))}
-      </div>
+                            {/* Stats Compact */}
+                            <div className="hidden md:flex gap-4 mr-4">
+                                <div className="text-center w-16">
+                                    <span className="block text-[10px] text-stone-600 uppercase">Attr</span>
+                                    <span className="text-stone-400 font-mono text-xs">{char.attributes.length}</span>
+                                </div>
+                                <div className="text-center w-16">
+                                    <span className="block text-[10px] text-stone-600 uppercase">Items</span>
+                                    <span className="text-stone-400 font-mono text-xs">{char.items?.length || 0}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-1 opacity-50 group-hover:opacity-100 transition">
+                                <button onClick={() => handleView(char.id)} className="p-2 hover:bg-stone-800 rounded text-stone-400 hover:text-white" title="Ver"><Eye size={16}/></button>
+                                <button onClick={() => handleEdit(char)} className="p-2 hover:bg-stone-800 rounded text-stone-400 hover:text-amber-500" title="Editar"><Swords size={16}/></button>
+                                <button onClick={() => handleDelete(char.id)} className="p-2 hover:bg-stone-800 rounded text-stone-400 hover:text-red-500" title="Excluir"><Trash2 size={16}/></button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+          </>
+      )}
     </div>
   );
 };

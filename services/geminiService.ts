@@ -1,10 +1,10 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { Character, Item, Skill } from '../types';
+import { Character, Item, Skill, Relationship } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const formatCharacterForPrompt = (c: Character) => {
+const formatCharacterForPrompt = (c: Character, allCharacters: Character[] = []) => {
   const attributesString = c.attributes.map(attr => `${attr.key}: ${attr.value}`).join(', ');
   
   // Handle migration from string[] to Item[]
@@ -27,6 +27,15 @@ const formatCharacterForPrompt = (c: Character) => {
       }
   }
 
+  // Handle Relationships
+  let relationshipsString = 'Nenhum vínculo conhecido.';
+  if (c.relationships && c.relationships.length > 0) {
+      relationshipsString = c.relationships.map(r => {
+          const targetName = allCharacters.find(char => char.id === r.targetId)?.name || "Desconhecido";
+          return `${targetName} é meu(minha) ${r.type} (Nível de Intimidade/Afinidade: ${r.affinity}/100)`;
+      }).join('; ');
+  }
+
   return `
     Nome: ${c.name}
     Raça: ${c.race || 'Desconhecida'}
@@ -36,13 +45,15 @@ const formatCharacterForPrompt = (c: Character) => {
     Atributos: ${attributesString}
     Equipamento/Inventário: ${itemsString}
     Habilidades/Magias: ${skillsString}
+    Relacionamentos/Vínculos: ${relationshipsString}
   `;
 };
 
 export const simulateCharacterResponse = async (
   character: Character,
   sceneDescription: string,
-  worldLore: string
+  worldLore: string,
+  allCharacters: Character[] = []
 ): Promise<string> => {
   if (!process.env.API_KEY) {
     return "Erro: Chave de API não configurada (process.env.API_KEY).";
@@ -56,14 +67,15 @@ export const simulateCharacterResponse = async (
       ${worldLore || "Nenhum contexto histórico fornecido."}
 
       SEU PERSONAGEM:
-      ${formatCharacterForPrompt(character)}
+      ${formatCharacterForPrompt(character, allCharacters)}
       Personalidade/Voz: ${character.voiceNotes}
 
       Instruções:
       1. Responda APENAS como o personagem, em primeira pessoa.
       2. Reaja à cena descrita pelo usuário com base em sua personalidade, raça, atributos e no contexto do mundo fornecido.
-      3. Não quebre o personagem.
-      4. Seja conciso, mas descritivo.
+      3. Leve em conta seus RELACIONAMENTOS. Se a cena mencionar alguém com quem você tem vínculo, reaja de acordo com a afinidade.
+      4. Não quebre o personagem.
+      5. Seja conciso, mas descritivo.
     `;
 
     const response = await ai.models.generateContent({

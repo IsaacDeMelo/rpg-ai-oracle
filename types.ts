@@ -22,6 +22,13 @@ export interface Skill {
   type: 'passive' | 'active' | 'spell';
 }
 
+export interface Relationship {
+  targetId: string;
+  type: string; // Ex: "Irmão", "Rival", "Amante"
+  affinity: number; // -100 a 100 ou 0 a 100
+  notes?: string;
+}
+
 export interface Character {
   id: string;
   name: string;
@@ -33,6 +40,7 @@ export interface Character {
   attributes: Attribute[];
   items: Item[] | string[]; // Union type for backward compatibility during migration
   skills: Skill[] | string[]; // Union type for backward compatibility during migration
+  relationships?: Relationship[];
   voiceNotes: string; 
 }
 
