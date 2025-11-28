@@ -179,7 +179,7 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
 
   const handleQuickSync = async (char: Character) => {
       if (!worldLore || worldLore.length < 20) {
-          alert("Lore vazio! Preencha as Crônicas do Mundo primeiro.");
+          alert("Lore vazio! Preencha as Crônicas do Mundo primeiro para que a IA tenha contexto.");
           return;
       }
       if (syncingIds.has(char.id)) return;
@@ -239,17 +239,15 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
             {editingId ? 'Editar Lenda' : 'Novo Personagem'}
           </h2>
           <div className="flex items-center gap-4">
-              {worldLore && (
-                  <button 
-                    onClick={handleSyncLore}
-                    disabled={isSyncing || !name}
-                    className="flex items-center gap-2 text-xs font-bold text-violet-400 hover:text-violet-300 border border-violet-900/50 bg-violet-900/20 px-3 py-2 rounded transition disabled:opacity-50"
-                    title="Reescrever história com base no Lore do Mundo"
-                  >
-                      <Sparkles size={14} className={isSyncing ? "animate-spin" : ""} />
-                      {isSyncing ? "Sincronizando..." : "Harmonizar com Lore"}
-                  </button>
-              )}
+              <button 
+                onClick={handleSyncLore}
+                disabled={isSyncing || !name}
+                className="flex items-center gap-2 text-xs font-bold text-violet-400 hover:text-violet-300 border border-violet-900/50 bg-violet-900/20 px-3 py-2 rounded transition disabled:opacity-50"
+                title={!worldLore ? "Preencha as Crônicas primeiro" : "Reescrever história com base no Lore do Mundo"}
+              >
+                  <Sparkles size={14} className={isSyncing ? "animate-spin" : ""} />
+                  {isSyncing ? "Sincronizando..." : "Harmonizar com Lore"}
+              </button>
               <button onClick={resetForm} className="text-stone-500 hover:text-amber-500 transition">
                 <X size={28} />
               </button>
@@ -489,34 +487,42 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
                 <span className="flex items-center gap-1.5"><Shield size={12} className="text-stone-600"/> {char.items?.length || 0} Equip.</span>
                 <span className="flex items-center gap-1.5"><Zap size={12} className="text-violet-900"/> {char.skills?.length || 0} Habilidades</span>
               </div>
-            </div>
 
-            {/* Actions Overlay */}
-            <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-               {worldLore && (
+              {/* Permanent Action Footer */}
+              <div className="flex justify-between items-center pt-4 mt-2 border-t border-stone-800">
                   <button 
                     onClick={() => handleQuickSync(char)}
                     disabled={syncingIds.has(char.id)}
-                    className="p-2 bg-stone-900 text-violet-500 hover:bg-violet-900 hover:text-white rounded shadow-lg border border-violet-900/50 transition"
-                    title="Sincronizar com Lore"
+                    className={`
+                        flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded transition border border-transparent
+                        ${!worldLore 
+                            ? 'text-stone-600 cursor-not-allowed hover:bg-stone-950' 
+                            : 'text-violet-400 hover:text-violet-200 hover:bg-violet-900/20 hover:border-violet-900/30'
+                        }
+                    `}
+                    title={!worldLore ? "Preencha as Crônicas do Mundo primeiro" : "Reescrever história com base no Lore"}
                   >
-                    <Sparkles size={18} className={syncingIds.has(char.id) ? "animate-spin" : ""} />
+                    <Sparkles size={14} className={syncingIds.has(char.id) ? "animate-spin" : ""} />
+                    {syncingIds.has(char.id) ? "..." : "Sincronizar"}
                   </button>
-               )}
-              <button 
-                onClick={() => handleEdit(char)}
-                className="p-2 bg-stone-900 text-amber-500 hover:bg-amber-600 hover:text-white rounded shadow-lg border border-amber-900/50 transition"
-                title="Editar"
-              >
-                <Swords size={18} />
-              </button>
-              <button 
-                onClick={() => handleDelete(char.id)}
-                className="p-2 bg-stone-900 text-stone-500 hover:bg-red-900 hover:text-white rounded shadow-lg border border-stone-700 transition"
-                title="Excluir"
-              >
-                <Trash2 size={18} />
-              </button>
+
+                  <div className="flex gap-1">
+                    <button 
+                        onClick={() => handleEdit(char)}
+                        className="p-2 text-stone-500 hover:text-amber-500 transition hover:bg-stone-800 rounded"
+                        title="Editar"
+                    >
+                        <Swords size={18} />
+                    </button>
+                    <button 
+                        onClick={() => handleDelete(char.id)}
+                        className="p-2 text-stone-500 hover:text-red-500 transition hover:bg-stone-800 rounded"
+                        title="Excluir"
+                    >
+                        <Trash2 size={18} />
+                    </button>
+                  </div>
+              </div>
             </div>
           </div>
         ))}
