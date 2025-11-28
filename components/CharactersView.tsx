@@ -1,16 +1,23 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Character, Attribute } from '../types';
-import { Trash2, Plus, Save, User, Swords, X, Shield, Zap, Scroll, Download } from 'lucide-react';
+import { Trash2, Plus, Save, User, Swords, X, Shield, Zap, Scroll, Download, Upload, Sparkles } from 'lucide-react';
+import { updateCharacterBackstory } from '../services/geminiService';
 
 interface CharactersViewProps {
   characters: Character[];
   setCharacters: (chars: Character[]) => void;
+  worldLore?: string;
 }
 
-const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacters }) => {
+const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacters, worldLore }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // AI Sync State
+  const [isSyncing, setIsSyncing] = useState(false); // For Edit Form
+  const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set()); // For Quick Actions
 
   // Form State
   const [name, setName] = useState('');
@@ -95,6 +102,113 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
     downloadAnchorNode.remove();
   };
 
+  const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target?.result as string;
+          const parsed = JSON.parse(content);
+          
+          if (Array.isArray(parsed)) {
+            // Basic validation check
+            const hasValidStructure = parsed.every(c => c.name && c.id);
+            
+            if (!hasValidStructure) {
+               alert("O arquivo não parece conter uma lista válida de personagens do RPG World Forge.");
+               return;
+            }
+
+            if (window.confirm(`Encontrados ${parsed.length} personagens. Deseja ADICIONAR à lista atual? \n(Clique em 'Cancelar' para SUBSTITUIR a lista atual)`)) {
+                // Append
+                // Remove duplicates based on ID to avoid issues
+                const existingIds = new Set(characters.map(c => c.id));
+                const newChars = parsed.filter((c: Character) => !existingIds.has(c.id));
+                setCharacters([...characters, ...newChars]);
+                alert(`${newChars.length} novos personagens importados.`);
+            } else {
+                // Replace
+                if(window.confirm("Tem certeza? Todos os personagens atuais serão perdidos.")) {
+                    setCharacters(parsed);
+                }
+            }
+          } else {
+            alert("O formato do JSON deve ser uma lista (array).");
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Erro ao ler o arquivo JSON.");
+        }
+      };
+      reader.readAsText(file);
+    }
+    // Reset input
+    event.target.value = '';
+  };
+
+  const handleSyncLore = async () => {
+    if (!worldLore || worldLore.length < 20) {
+        alert("As Crônicas do Mundo estão vazias. Escreva ou importe o Lore primeiro.");
+        return;
+    }
+    if (!name) return;
+
+    setIsSyncing(true);
+    // Gather context of other characters (names/races only to save tokens)
+    const others = characters
+        .filter(c => c.id !== editingId)
+        .map(c => `${c.name} (${c.race})`)
+        .join(', ');
+
+    const currentData: Character = {
+        id: 'temp', name, race, height, description, imageUrl, voiceNotes, 
+        attributes, items, skills
+    };
+
+    const result = await updateCharacterBackstory(currentData, worldLore, others);
+    
+    if (result) {
+         if (window.confirm("A IA gerou uma nova interpretação baseada no Lore. Deseja substituir a Descrição e Personalidade?")) {
+            setDescription(result);
+            // alert("História atualizada com sucesso!"); Handled by system log override
+         }
+    }
+    setIsSyncing(false);
+  };
+
+  const handleQuickSync = async (char: Character) => {
+      if (!worldLore || worldLore.length < 20) {
+          alert("Lore vazio! Preencha as Crônicas do Mundo primeiro.");
+          return;
+      }
+      if (syncingIds.has(char.id)) return;
+
+      if (!window.confirm(`Deseja que a IA reescreva a história de "${char.name}" para se adequar às Crônicas do Mundo atuais?`)) return;
+
+      setSyncingIds(prev => new Set(prev).add(char.id));
+
+      const others = characters
+        .filter(c => c.id !== char.id)
+        .map(c => `${c.name} (${c.race})`)
+        .join(', ');
+      
+      try {
+          const newDesc = await updateCharacterBackstory(char, worldLore, others);
+          if (newDesc && !newDesc.startsWith('Erro')) {
+              setCharacters(characters.map(c => c.id === char.id ? { ...c, description: newDesc } : c));
+          }
+      } catch (e) {
+          console.error(e);
+      } finally {
+          setSyncingIds(prev => {
+              const next = new Set(prev);
+              next.delete(char.id);
+              return next;
+          });
+      }
+  };
+
   // List Handlers
   const addItem = () => { if(tempItem.trim()) { setItems([...items, tempItem]); setTempItem(''); }};
   const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
@@ -124,9 +238,22 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
             <Scroll className="text-stone-500"/>
             {editingId ? 'Editar Lenda' : 'Novo Personagem'}
           </h2>
-          <button onClick={resetForm} className="text-stone-500 hover:text-amber-500 transition">
-            <X size={28} />
-          </button>
+          <div className="flex items-center gap-4">
+              {worldLore && (
+                  <button 
+                    onClick={handleSyncLore}
+                    disabled={isSyncing || !name}
+                    className="flex items-center gap-2 text-xs font-bold text-violet-400 hover:text-violet-300 border border-violet-900/50 bg-violet-900/20 px-3 py-2 rounded transition disabled:opacity-50"
+                    title="Reescrever história com base no Lore do Mundo"
+                  >
+                      <Sparkles size={14} className={isSyncing ? "animate-spin" : ""} />
+                      {isSyncing ? "Sincronizando..." : "Harmonizar com Lore"}
+                  </button>
+              )}
+              <button onClick={resetForm} className="text-stone-500 hover:text-amber-500 transition">
+                <X size={28} />
+              </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -278,12 +405,27 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
         </div>
         
         <div className="flex gap-3">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleImportJSON} 
+            className="hidden" 
+            accept=".json"
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-400 hover:text-stone-200 px-4 py-3 rounded flex items-center gap-2 transition shadow-lg"
+            title="Importar JSON"
+          >
+            <Upload size={18} /> <span className="font-cinzel text-sm hidden md:inline">Importar</span>
+          </button>
+          
           <button 
             onClick={handleExportJSON}
             className="bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-400 hover:text-stone-200 px-4 py-3 rounded flex items-center gap-2 transition shadow-lg"
             title="Baixar JSON"
           >
-            <Download size={18} /> <span className="font-cinzel text-sm">Exportar</span>
+            <Download size={18} /> <span className="font-cinzel text-sm hidden md:inline">Exportar</span>
           </button>
           
           <button 
@@ -300,7 +442,7 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
           <div className="col-span-full flex flex-col items-center justify-center py-24 bg-stone-900/30 rounded-lg border-2 border-dashed border-stone-800">
             <User size={64} className="text-stone-700 mb-6" />
             <p className="text-stone-400 text-xl font-cinzel">Nenhum herói encontrado.</p>
-            <p className="text-stone-600 text-sm mt-2">O pergaminho está em branco. Comece a escrever.</p>
+            <p className="text-stone-600 text-sm mt-2">O pergaminho está em branco. Comece a escrever ou importe uma lista.</p>
           </div>
         )}
 
@@ -351,6 +493,16 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
 
             {/* Actions Overlay */}
             <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+               {worldLore && (
+                  <button 
+                    onClick={() => handleQuickSync(char)}
+                    disabled={syncingIds.has(char.id)}
+                    className="p-2 bg-stone-900 text-violet-500 hover:bg-violet-900 hover:text-white rounded shadow-lg border border-violet-900/50 transition"
+                    title="Sincronizar com Lore"
+                  >
+                    <Sparkles size={18} className={syncingIds.has(char.id) ? "animate-spin" : ""} />
+                  </button>
+               )}
               <button 
                 onClick={() => handleEdit(char)}
                 className="p-2 bg-stone-900 text-amber-500 hover:bg-amber-600 hover:text-white rounded shadow-lg border border-amber-900/50 transition"

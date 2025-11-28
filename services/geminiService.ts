@@ -2,8 +2,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { Character } from '../types';
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const formatCharacterForPrompt = (c: Character) => {
   const attributesString = c.attributes.map(attr => `${attr.key}: ${attr.value}`).join(', ');
@@ -26,7 +25,7 @@ export const simulateCharacterResponse = async (
   sceneDescription: string,
   worldLore: string
 ): Promise<string> => {
-  if (!apiKey) {
+  if (!process.env.API_KEY) {
     return "Erro: Chave de API não configurada (process.env.API_KEY).";
   }
 
@@ -71,7 +70,7 @@ export const simulateBattle = async (
   battleContext: string,
   worldLore: string
 ): Promise<string> => {
-  if (!apiKey) {
+  if (!process.env.API_KEY) {
     return "Erro: Chave de API não configurada.";
   }
 
@@ -120,7 +119,7 @@ export const summarizeStoryForLore = async (
   storyText: string,
   currentLore: string
 ): Promise<string> => {
-  if (!apiKey) return "Erro: API Key ausente.";
+  if (!process.env.API_KEY) return "Erro: API Key ausente.";
 
   try {
     const prompt = `
@@ -154,5 +153,55 @@ export const summarizeStoryForLore = async (
   } catch (error) {
     console.error("Erro na API Gemini (Summarize):", error);
     return "Erro ao resumir a história.";
+  }
+};
+
+export const updateCharacterBackstory = async (
+  character: Character,
+  worldLore: string,
+  otherCharactersContext: string
+): Promise<string> => {
+  if (!process.env.API_KEY) {
+     return "Erro: Chave de API não configurada.";
+  }
+
+  try {
+    const prompt = `
+      Atue como um Editor de Fantasia e Mestre de Lore.
+      
+      Sua tarefa é reescrever e enriquecer a história (background) de um personagem para que ela se encaixe perfeitamente no LORE DO MUNDO fornecido.
+
+      LORE DO MUNDO:
+      ${worldLore || "Lore genérico de fantasia medieval."}
+
+      OUTROS PERSONAGENS IMPORTANTES (Contexto):
+      ${otherCharactersContext || "Nenhum outro personagem relevante no momento."}
+
+      PERSONAGEM ALVO (Rascunho atual):
+      Nome: ${character.name}
+      Raça: ${character.race}
+      Descrição Atual: ${character.description}
+      Personalidade: ${character.voiceNotes}
+
+      INSTRUÇÕES:
+      1. Reescreva a "Descrição" do personagem.
+      2. Integre elementos do Lore do Mundo (cidades, eventos, divindades) na história dele.
+      3. Se houver conexões lógicas com os outros personagens listados, sugira-as sutilmente.
+      4. Mantenha a essência original do personagem, mas dê profundidade.
+      5. Retorne APENAS o novo texto da descrição/história (3 a 5 parágrafos).
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        temperature: 0.8,
+      },
+    });
+
+    return response.text || "Não foi possível gerar uma nova história.";
+  } catch (error) {
+    console.error("Erro na API Gemini (Backstory):", error);
+    return "Erro ao conectar com a IA.";
   }
 };
