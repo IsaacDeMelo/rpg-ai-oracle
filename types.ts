@@ -4,6 +4,24 @@ export interface Attribute {
   value: string;
 }
 
+export interface Item {
+  id: string;
+  name: string;
+  description: string;
+  quantity: number;
+  imageUrl: string;
+  isEquipped?: boolean;
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  cost: string; // Mana, Cooldown, Stamina
+  imageUrl: string;
+  type: 'passive' | 'active' | 'spell';
+}
+
 export interface Character {
   id: string;
   name: string;
@@ -11,10 +29,11 @@ export interface Character {
   height: string;
   description: string;
   imageUrl: string;
+  money: string; // Gold, Coins, Credits
   attributes: Attribute[];
-  items: string[];
-  skills: string[]; // Spells, abilities, techniques
-  voiceNotes: string; // Instructions for how the AI should speak
+  items: Item[] | string[]; // Union type for backward compatibility during migration
+  skills: Skill[] | string[]; // Union type for backward compatibility during migration
+  voiceNotes: string; 
 }
 
 export interface Location {

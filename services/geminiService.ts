@@ -1,21 +1,40 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { Character } from '../types';
+import { Character, Item, Skill } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const formatCharacterForPrompt = (c: Character) => {
   const attributesString = c.attributes.map(attr => `${attr.key}: ${attr.value}`).join(', ');
-  const itemsString = c.items && c.items.length > 0 ? c.items.join(', ') : 'Nenhum';
-  const skillsString = c.skills && c.skills.length > 0 ? c.skills.join(', ') : 'Nenhuma';
+  
+  // Handle migration from string[] to Item[]
+  let itemsString = 'Nenhum';
+  if (c.items && c.items.length > 0) {
+    if (typeof c.items[0] === 'string') {
+        itemsString = c.items.join(', ');
+    } else {
+        itemsString = (c.items as Item[]).map(i => `${i.name} (x${i.quantity}) - ${i.description}`).join('; ');
+    }
+  }
+
+  // Handle migration from string[] to Skill[]
+  let skillsString = 'Nenhuma';
+  if (c.skills && c.skills.length > 0) {
+      if (typeof c.skills[0] === 'string') {
+          skillsString = c.skills.join(', ');
+      } else {
+          skillsString = (c.skills as Skill[]).map(s => `${s.name} [${s.cost}]: ${s.description}`).join('; ');
+      }
+  }
 
   return `
     Nome: ${c.name}
     Raça: ${c.race || 'Desconhecida'}
     Altura: ${c.height || 'Desconhecida'}
+    Dinheiro/Riqueza: ${c.money || '0 PO'}
     Descrição: ${c.description}
     Atributos: ${attributesString}
-    Equipamento/Itens: ${itemsString}
+    Equipamento/Inventário: ${itemsString}
     Habilidades/Magias: ${skillsString}
   `;
 };
