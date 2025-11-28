@@ -26,35 +26,6 @@ const App: React.FC = () => {
     setWorldLore(prev => prev ? prev + newEntry : newEntry);
   };
 
-  const renderView = () => {
-    switch (activeView) {
-      case 'characters':
-        return <CharactersView characters={characters} setCharacters={setCharacters} />;
-      case 'world':
-        return <WorldView locations={locations} setLocations={setLocations} />;
-      case 'lore':
-        return <LoreView lore={worldLore} setLore={setWorldLore} />;
-      case 'story':
-        return <StoryView pages={storyPages} setPages={setStoryPages} onAddToLore={handleAddToLore} worldLore={worldLore} />;
-      case 'simulator':
-        return <SimulatorView characters={characters} worldLore={worldLore} />;
-      case 'battle':
-        return <BattleView characters={characters} worldLore={worldLore} />;
-      case 'dashboard':
-      default:
-        return (
-            <DashboardView 
-                setActiveView={setActiveView} 
-                stats={{
-                    chars: characters.length,
-                    locs: locations.length,
-                    pages: storyPages.length
-                }}
-            />
-        );
-    }
-  };
-
   return (
     <div className="min-h-screen text-stone-200 font-sans selection:bg-amber-900/50">
       <SystemLog />
@@ -137,7 +108,47 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="ml-20 md:ml-64 p-6 md:p-10 min-h-screen transition-all duration-300 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-stone-800 via-stone-950 to-black">
         <div className="max-w-7xl mx-auto">
-          {renderView()}
+          {/* 
+            IMPLEMENTAÇÃO KEEP-ALIVE:
+            Renderizamos todas as views, mas escondemos as inativas com CSS.
+            Isso preserva o estado dos formulários (rascunhos) ao navegar.
+          */}
+          
+          <div className={activeView === 'dashboard' ? 'block' : 'hidden'}>
+            <DashboardView 
+              setActiveView={setActiveView} 
+              stats={{
+                  chars: characters.length,
+                  locs: locations.length,
+                  pages: storyPages.length
+              }}
+            />
+          </div>
+
+          <div className={activeView === 'characters' ? 'block' : 'hidden'}>
+            <CharactersView characters={characters} setCharacters={setCharacters} />
+          </div>
+
+          <div className={activeView === 'world' ? 'block' : 'hidden'}>
+            <WorldView locations={locations} setLocations={setLocations} />
+          </div>
+
+          <div className={activeView === 'lore' ? 'block' : 'hidden'}>
+            <LoreView lore={worldLore} setLore={setWorldLore} />
+          </div>
+
+          <div className={activeView === 'story' ? 'block' : 'hidden'}>
+            <StoryView pages={storyPages} setPages={setStoryPages} onAddToLore={handleAddToLore} worldLore={worldLore} />
+          </div>
+
+          <div className={activeView === 'simulator' ? 'block' : 'hidden'}>
+            <SimulatorView characters={characters} worldLore={worldLore} />
+          </div>
+
+          <div className={activeView === 'battle' ? 'block' : 'hidden'}>
+            <BattleView characters={characters} worldLore={worldLore} />
+          </div>
+
         </div>
       </main>
     </div>
