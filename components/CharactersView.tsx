@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Character, Attribute, Item, Skill } from '../types';
-import { Trash2, Plus, Save, User, Swords, X, Shield, Zap, Scroll, Download, Upload, Sparkles, Coins, Package, Flame, Info } from 'lucide-react';
+import { Trash2, Plus, Save, User, Swords, X, Shield, Zap, Scroll, Download, Upload, Sparkles, Coins, Package, Flame, Eye, PenTool } from 'lucide-react';
 import { updateCharacterBackstory } from '../services/geminiService';
 
 interface CharactersViewProps {
@@ -13,6 +13,10 @@ interface CharactersViewProps {
 const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacters, worldLore }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // View Only State
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // AI Sync State
@@ -23,13 +27,13 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
   const [name, setName] = useState('');
   const [race, setRace] = useState('');
   const [height, setHeight] = useState('');
-  const [money, setMoney] = useState(''); // New Money Field
+  const [money, setMoney] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [voiceNotes, setVoiceNotes] = useState('');
   const [attributes, setAttributes] = useState<Attribute[]>([{ key: 'Força', value: '10' }]);
   
-  // New Complex State
+  // Complex State
   const [items, setItems] = useState<Item[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
 
@@ -65,6 +69,9 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
   };
 
   const handleEdit = (char: Character) => {
+    // Close view mode if open
+    setViewingId(null);
+
     setName(char.name);
     setRace(char.race || '');
     setHeight(char.height || '');
@@ -74,7 +81,7 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
     setVoiceNotes(char.voiceNotes);
     setAttributes(char.attributes);
     
-    // Migration Logic: Convert legacy string[] to Item[]/Skill[]
+    // Migration Logic
     const migratedItems: Item[] = (char.items || []).map(i => {
         if (typeof i === 'string') {
             return { id: crypto.randomUUID(), name: i, quantity: 1, description: '', imageUrl: '' };
@@ -96,9 +103,15 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
     setIsEditing(true);
   };
 
+  const handleView = (id: string) => {
+      setViewingId(id);
+      setIsEditing(false);
+  };
+
   const handleDelete = (id: string) => {
     if (window.confirm('Tem certeza que deseja banir este personagem para o oblívio?')) {
       setCharacters(characters.filter(c => c.id !== id));
+      if (viewingId === id) setViewingId(null);
     }
   };
 
@@ -126,7 +139,6 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
   };
 
   // --- Handlers for Complex Data ---
-
   const handleAddItem = () => {
     if (!newItemName.trim()) return;
     const item: Item = {
@@ -214,6 +226,135 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
           if (newDesc) setCharacters(characters.map(c => c.id === char.id ? { ...c, description: newDesc } : c));
       } catch (e) { console.error(e); } 
       finally { setSyncingIds(prev => { const n = new Set(prev); n.delete(char.id); return n; }); }
+  };
+
+  // --- VIEW MODE MODAL ---
+  const ViewingModal = () => {
+      const char = characters.find(c => c.id === viewingId);
+      if (!char) return null;
+
+      // Ensure types for rendering
+      const viewItems: Item[] = (char.items || []).map(i => typeof i === 'string' ? { id: i, name: i, quantity: 1, description: '', imageUrl: '' } : i);
+      const viewSkills: Skill[] = (char.skills || []).map(s => typeof s === 'string' ? { id: s, name: s, cost: '', description: '', imageUrl: '', type: 'active' } : s);
+
+      return (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setViewingId(null)}>
+              <div className="bg-stone-900 w-full max-w-5xl h-[90vh] rounded-lg border-2 border-stone-600 shadow-2xl flex flex-col md:flex-row overflow-hidden relative" onClick={e => e.stopPropagation()}>
+                  
+                  <button onClick={() => setViewingId(null)} className="absolute top-4 right-4 z-20 bg-black/50 hover:bg-red-900/80 text-white p-2 rounded-full transition"><X size={24}/></button>
+
+                  {/* Left Column: Image & Basic Stats */}
+                  <div className="w-full md:w-1/3 bg-black/40 border-r border-stone-800 flex flex-col">
+                      <div className="h-1/2 md:h-2/5 relative">
+                          <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-stone-900 to-transparent"></div>
+                          <div className="absolute bottom-0 left-0 p-6 w-full">
+                               <h2 className="text-4xl font-black font-cinzel text-white drop-shadow-md leading-none mb-1">{char.name}</h2>
+                               <div className="flex flex-wrap gap-2 text-sm font-cinzel text-amber-500 font-bold">
+                                   <span>{char.race}</span>
+                                   {char.height && <span>• {char.height}</span>}
+                               </div>
+                          </div>
+                      </div>
+                      
+                      <div className="flex-1 p-6 overflow-y-auto custom-scrollbar space-y-6">
+                           {char.money && (
+                                <div className="bg-amber-900/20 border border-amber-900/50 p-3 rounded flex items-center justify-center gap-3">
+                                    <Coins className="text-amber-500" />
+                                    <span className="text-xl font-mono text-amber-200">{char.money}</span>
+                                </div>
+                           )}
+
+                           <div>
+                               <h3 className="text-stone-500 font-bold uppercase tracking-widest text-xs mb-3 border-b border-stone-800 pb-1">Atributos</h3>
+                               <div className="grid grid-cols-2 gap-3">
+                                   {char.attributes.map((attr, i) => (
+                                       <div key={i} className="flex justify-between bg-stone-800/50 p-2 rounded">
+                                           <span className="text-stone-400 text-xs">{attr.key}</span>
+                                           <span className="text-amber-400 font-bold">{attr.value}</span>
+                                       </div>
+                                   ))}
+                               </div>
+                           </div>
+                           
+                           {char.voiceNotes && (
+                               <div>
+                                   <h3 className="text-stone-500 font-bold uppercase tracking-widest text-xs mb-3 border-b border-stone-800 pb-1">Personalidade (IA)</h3>
+                                   <p className="text-stone-400 text-xs italic leading-relaxed">"{char.voiceNotes}"</p>
+                               </div>
+                           )}
+
+                           <div className="pt-4 mt-auto">
+                               <button onClick={() => handleEdit(char)} className="w-full bg-stone-800 hover:bg-stone-700 text-stone-300 py-3 rounded border border-stone-600 flex items-center justify-center gap-2 transition">
+                                   <PenTool size={16} /> Editar Ficha
+                               </button>
+                           </div>
+                      </div>
+                  </div>
+
+                  {/* Right Column: Lore, Inventory, Skills */}
+                  <div className="w-full md:w-2/3 bg-stone-900/95 overflow-y-auto custom-scrollbar p-6 md:p-10 space-y-8">
+                      
+                      {/* Description */}
+                      <section>
+                          <h3 className="text-2xl font-cinzel text-stone-300 mb-4 flex items-center gap-2"><Scroll className="text-stone-600"/> História</h3>
+                          <div className="prose prose-invert prose-stone max-w-none font-serif leading-relaxed text-stone-300 text-lg">
+                              {char.description.split('\n').map((p, i) => <p key={i} className="mb-4">{p}</p>)}
+                          </div>
+                      </section>
+
+                      {/* Inventory Grid (Read Only) */}
+                      {viewItems.length > 0 && (
+                          <section>
+                              <h3 className="text-2xl font-cinzel text-stone-300 mb-4 flex items-center gap-2 border-t border-stone-800 pt-8">
+                                  <Package className="text-amber-700"/> Inventário
+                              </h3>
+                              <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-3">
+                                  {viewItems.map((item, idx) => (
+                                      <div key={idx} className="aspect-square bg-stone-950 border border-stone-700 rounded relative group overflow-hidden" title={`${item.name}\n${item.description}`}>
+                                          {item.imageUrl ? (
+                                              <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                                          ) : (
+                                              <div className="w-full h-full flex items-center justify-center text-stone-700"><Shield size={24}/></div>
+                                          )}
+                                          <span className="absolute bottom-0 right-0 bg-black/80 text-white text-[10px] px-1.5 py-0.5 rounded-tl font-mono">{item.quantity}</span>
+                                          <div className="absolute inset-0 bg-black/90 opacity-0 group-hover:opacity-100 transition flex items-center justify-center p-1 text-center">
+                                              <p className="text-[10px] font-bold text-amber-100">{item.name}</p>
+                                          </div>
+                                      </div>
+                                  ))}
+                              </div>
+                          </section>
+                      )}
+
+                      {/* Skills List (Read Only) */}
+                      {viewSkills.length > 0 && (
+                          <section>
+                              <h3 className="text-2xl font-cinzel text-stone-300 mb-4 flex items-center gap-2 border-t border-stone-800 pt-8">
+                                  <Flame className="text-violet-700"/> Habilidades
+                              </h3>
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                  {viewSkills.map((skill, idx) => (
+                                      <div key={idx} className="flex gap-4 bg-stone-950 p-4 rounded border border-stone-800/50">
+                                          <div className="w-14 h-14 bg-black rounded border border-stone-700 overflow-hidden flex-shrink-0">
+                                              {skill.imageUrl ? <img src={skill.imageUrl} className="w-full h-full object-cover"/> : <div className="flex items-center justify-center h-full text-violet-900"><Zap/></div>}
+                                          </div>
+                                          <div>
+                                              <div className="flex items-center gap-2 mb-1">
+                                                  <h4 className="font-bold text-stone-200">{skill.name}</h4>
+                                                  {skill.cost && <span className="text-[10px] bg-violet-900/30 text-violet-300 px-2 rounded border border-violet-900/50">{skill.cost}</span>}
+                                              </div>
+                                              <p className="text-sm text-stone-500 leading-snug font-serif">{skill.description}</p>
+                                          </div>
+                                      </div>
+                                  ))}
+                              </div>
+                          </section>
+                      )}
+                  </div>
+              </div>
+          </div>
+      );
   };
 
   if (isEditing) {
@@ -408,6 +549,9 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
 
   return (
     <div className="space-y-8">
+      {/* Renders the modal if a character is being viewed */}
+      {viewingId && <ViewingModal />}
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b-2 border-amber-900/30 pb-4 gap-4">
         <div>
            <h2 className="text-4xl font-black font-cinzel text-stone-100 drop-shadow-sm">Galeria de Heróis</h2>
@@ -432,60 +576,70 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
 
         {characters.map(char => (
           <div key={char.id} className="bg-stone-900 group relative rounded-sm shadow-xl overflow-hidden transition-all duration-300 hover:-translate-y-1 border border-stone-800 hover:border-amber-600/50">
-            <div className="h-64 overflow-hidden relative border-b-4 border-amber-900/80">
-              <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover group-hover:scale-110 transition duration-700 filter grayscale-[20%] group-hover:grayscale-0" onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/400/200?grayscale'; }} />
-              <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-transparent to-transparent opacity-90" />
-              <div className="absolute bottom-0 left-0 w-full p-4">
-                <h3 className="text-2xl font-bold text-stone-100 font-cinzel drop-shadow-md">{char.name}</h3>
-                <div className="flex justify-between items-end">
-                    {(char.race || char.height) && (
-                    <div className="flex items-center gap-2 mt-1">
-                        <span className="h-px w-6 bg-amber-500/50 inline-block"></span>
-                        <p className="text-amber-500 text-xs font-bold uppercase tracking-widest font-sans">{char.race}</p>
-                    </div>
-                    )}
-                    {char.money && (
-                        <div className="flex items-center gap-1 text-amber-300 bg-black/40 px-2 py-0.5 rounded border border-amber-900/30">
-                            <Coins size={10} /> <span className="text-xs font-mono">{char.money}</span>
-                        </div>
-                    )}
+            {/* Click to View */}
+            <div onClick={() => handleView(char.id)} className="cursor-pointer">
+                <div className="h-64 overflow-hidden relative border-b-4 border-amber-900/80">
+                <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover group-hover:scale-110 transition duration-700 filter grayscale-[20%] group-hover:grayscale-0" onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/400/200?grayscale'; }} />
+                <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-transparent to-transparent opacity-90" />
+                
+                {/* View Icon Overlay */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-500 bg-black/20 backdrop-blur-[2px]">
+                    <Eye size={48} className="text-white drop-shadow-lg" />
                 </div>
-              </div>
+
+                <div className="absolute bottom-0 left-0 w-full p-4">
+                    <h3 className="text-2xl font-bold text-stone-100 font-cinzel drop-shadow-md">{char.name}</h3>
+                    <div className="flex justify-between items-end">
+                        {(char.race || char.height) && (
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="h-px w-6 bg-amber-500/50 inline-block"></span>
+                            <p className="text-amber-500 text-xs font-bold uppercase tracking-widest font-sans">{char.race}</p>
+                        </div>
+                        )}
+                        {char.money && (
+                            <div className="flex items-center gap-1 text-amber-300 bg-black/40 px-2 py-0.5 rounded border border-amber-900/30">
+                                <Coins size={10} /> <span className="text-xs font-mono">{char.money}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                </div>
+                
+                <div className="p-5 space-y-4">
+                <p className="text-stone-400 text-sm leading-relaxed line-clamp-3 italic font-serif">"{char.description}"</p>
+                
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                    {char.attributes.slice(0, 4).map((attr, idx) => (
+                    <div key={idx} className="bg-black/20 p-2 rounded border border-stone-800 flex justify-between items-center">
+                        <span className="text-stone-500 text-[10px] uppercase font-bold tracking-wider">{attr.key.slice(0,8)}</span>
+                        <span className="text-amber-100 font-mono font-bold">{attr.value}</span>
+                    </div>
+                    ))}
+                </div>
+
+                {/* Mini Inventory Preview */}
+                {char.items && char.items.length > 0 && typeof char.items[0] !== 'string' && (
+                    <div className="flex gap-1 overflow-hidden pt-2 h-10">
+                        {(char.items as Item[]).slice(0,6).map((item, i) => (
+                            <div key={i} className="aspect-square h-full bg-stone-950 border border-stone-800 rounded flex items-center justify-center relative" title={`${item.name} (x${item.quantity})`}>
+                                {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover opacity-70"/> : <div className="w-1 h-1 bg-stone-700 rounded-full"/>}
+                            </div>
+                        ))}
+                    </div>
+                )}
+                </div>
             </div>
-            
-            <div className="p-5 space-y-4">
-              <p className="text-stone-400 text-sm leading-relaxed line-clamp-3 italic font-serif">"{char.description}"</p>
-              
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                {char.attributes.slice(0, 4).map((attr, idx) => (
-                  <div key={idx} className="bg-black/20 p-2 rounded border border-stone-800 flex justify-between items-center">
-                    <span className="text-stone-500 text-[10px] uppercase font-bold tracking-wider">{attr.key.slice(0,8)}</span>
-                    <span className="text-amber-100 font-mono font-bold">{attr.value}</span>
-                  </div>
-                ))}
-              </div>
 
-              {/* Mini Inventory Preview */}
-              {char.items && char.items.length > 0 && typeof char.items[0] !== 'string' && (
-                  <div className="flex gap-1 overflow-hidden pt-2 h-10">
-                      {(char.items as Item[]).slice(0,6).map((item, i) => (
-                          <div key={i} className="aspect-square h-full bg-stone-950 border border-stone-800 rounded flex items-center justify-center relative" title={`${item.name} (x${item.quantity})`}>
-                              {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover opacity-70"/> : <div className="w-1 h-1 bg-stone-700 rounded-full"/>}
-                          </div>
-                      ))}
-                  </div>
-              )}
-
-              <div className="flex justify-between items-center pt-4 mt-2 border-t border-stone-800">
+            <div className="flex justify-between items-center pt-2 pb-4 px-5 border-t border-stone-800 bg-stone-950/50">
                   <button onClick={() => handleQuickSync(char)} disabled={syncingIds.has(char.id)} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded transition border border-transparent ${!worldLore ? 'text-stone-600 cursor-not-allowed' : 'text-violet-400 hover:bg-violet-900/20'}`}>
                     <Sparkles size={14} className={syncingIds.has(char.id) ? "animate-spin" : ""} /> {syncingIds.has(char.id) ? "..." : "Sincronizar"}
                   </button>
                   <div className="flex gap-1">
-                    <button onClick={() => handleEdit(char)} className="p-2 text-stone-500 hover:text-amber-500 transition hover:bg-stone-800 rounded"><Swords size={18} /></button>
-                    <button onClick={() => handleDelete(char.id)} className="p-2 text-stone-500 hover:text-red-500 transition hover:bg-stone-800 rounded"><Trash2 size={18} /></button>
+                    <button onClick={() => handleView(char.id)} className="p-2 text-stone-500 hover:text-stone-200 transition hover:bg-stone-800 rounded" title="Visualizar Ficha"><Eye size={18} /></button>
+                    <button onClick={() => handleEdit(char)} className="p-2 text-stone-500 hover:text-amber-500 transition hover:bg-stone-800 rounded" title="Editar"><Swords size={18} /></button>
+                    <button onClick={() => handleDelete(char.id)} className="p-2 text-stone-500 hover:text-red-500 transition hover:bg-stone-800 rounded" title="Excluir"><Trash2 size={18} /></button>
                   </div>
               </div>
-            </div>
           </div>
         ))}
       </div>

@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Location } from '../types';
-import { Map as MapIcon, Plus, Save, Trash2, X, MapPin, BookOpen } from 'lucide-react';
+import { Map as MapIcon, Plus, Save, Trash2, X, MapPin, BookOpen, Eye, PenTool, ShieldAlert } from 'lucide-react';
 
 interface WorldViewProps {
   locations: Location[];
@@ -10,6 +11,9 @@ interface WorldViewProps {
 const WorldView: React.FC<WorldViewProps> = ({ locations, setLocations }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // View Only State
+  const [viewingId, setViewingId] = useState<string | null>(null);
 
   // Form State
   const [name, setName] = useState('');
@@ -27,6 +31,7 @@ const WorldView: React.FC<WorldViewProps> = ({ locations, setLocations }) => {
   };
 
   const handleEdit = (loc: Location) => {
+    setViewingId(null); // Close view if open
     setName(loc.name);
     setDescription(loc.description);
     setImageUrl(loc.imageUrl);
@@ -34,10 +39,16 @@ const WorldView: React.FC<WorldViewProps> = ({ locations, setLocations }) => {
     setEditingId(loc.id);
     setIsEditing(true);
   };
+  
+  const handleView = (id: string) => {
+      setViewingId(id);
+      setIsEditing(false);
+  }
 
   const handleDelete = (id: string) => {
     if (window.confirm('A destruição deste local será permanente. Continuar?')) {
       setLocations(locations.filter(l => l.id !== id));
+      if (viewingId === id) setViewingId(null);
     }
   };
 
@@ -56,6 +67,60 @@ const WorldView: React.FC<WorldViewProps> = ({ locations, setLocations }) => {
       setLocations([...locations, newLoc]);
     }
     resetForm();
+  };
+
+  // --- VIEW MODE MODAL ---
+  const ViewingModal = () => {
+      const loc = locations.find(l => l.id === viewingId);
+      if (!loc) return null;
+
+      return (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setViewingId(null)}>
+              <div className="bg-stone-900 w-full max-w-4xl max-h-[90vh] rounded border-2 border-emerald-900/50 shadow-2xl overflow-y-auto custom-scrollbar relative flex flex-col" onClick={e => e.stopPropagation()}>
+                  
+                  {/* Close Button */}
+                  <button onClick={() => setViewingId(null)} className="absolute top-4 right-4 z-20 bg-black/50 hover:bg-emerald-900 text-white p-2 rounded-full transition"><X size={24}/></button>
+                  
+                  {/* Hero Image */}
+                  <div className="w-full h-80 relative flex-shrink-0">
+                      <img src={loc.imageUrl} className="w-full h-full object-cover" alt={loc.name} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/40 to-transparent"></div>
+                      <div className="absolute bottom-0 left-0 p-8 w-full">
+                          <div className="flex items-center gap-3 mb-2 text-emerald-500 font-cinzel font-bold text-sm tracking-widest uppercase">
+                              <MapPin size={16}/> Local Conhecido
+                          </div>
+                          <h1 className="text-5xl md:text-6xl font-black font-cinzel text-white drop-shadow-lg leading-none">{loc.name}</h1>
+                      </div>
+                  </div>
+
+                  <div className="p-8 md:p-12 space-y-10 flex-1 bg-stone-900">
+                      <div className="prose prose-invert prose-stone max-w-none">
+                          <p className="text-xl md:text-2xl font-serif text-stone-300 leading-relaxed italic border-l-4 border-emerald-700 pl-6 py-2 bg-gradient-to-r from-emerald-900/10 to-transparent">
+                              "{loc.description}"
+                          </p>
+                      </div>
+
+                      {loc.notes && (
+                          <div className="bg-stone-950 p-6 rounded border border-stone-800 relative group overflow-hidden">
+                               <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none text-emerald-500">
+                                   <ShieldAlert size={100} />
+                               </div>
+                               <h3 className="text-sm font-bold text-stone-500 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-stone-800 pb-2">
+                                   <BookOpen size={16}/> Notas do Mestre (Confidencial)
+                               </h3>
+                               <p className="font-mono text-stone-400 text-sm leading-relaxed whitespace-pre-wrap">{loc.notes}</p>
+                          </div>
+                      )}
+
+                      <div className="flex justify-end pt-8 border-t border-stone-800">
+                           <button onClick={() => handleEdit(loc)} className="flex items-center gap-2 text-stone-500 hover:text-emerald-500 transition px-4 py-2 rounded hover:bg-stone-800">
+                               <PenTool size={16}/> Reescrever Cartografia
+                           </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )
   };
 
   if (isEditing) {
@@ -137,6 +202,8 @@ const WorldView: React.FC<WorldViewProps> = ({ locations, setLocations }) => {
 
   return (
     <div className="space-y-8">
+      {viewingId && <ViewingModal />}
+
       <div className="flex justify-between items-center border-b-2 border-stone-800 pb-4">
         <div>
             <h2 className="text-4xl font-cinzel font-black text-stone-200">Atlas do Mundo</h2>
@@ -160,7 +227,7 @@ const WorldView: React.FC<WorldViewProps> = ({ locations, setLocations }) => {
         )}
 
         {locations.map(loc => (
-          <div key={loc.id} className="bg-stone-900 rounded overflow-hidden border border-stone-800 shadow-xl hover:shadow-2xl hover:border-emerald-700/50 transition duration-500 group relative">
+          <div key={loc.id} className="bg-stone-900 rounded overflow-hidden border border-stone-800 shadow-xl hover:shadow-2xl hover:border-emerald-700/50 transition duration-500 group relative cursor-pointer" onClick={() => handleView(loc.id)}>
             <div className="h-72 overflow-hidden relative">
               <img 
                 src={loc.imageUrl} 
@@ -172,16 +239,30 @@ const WorldView: React.FC<WorldViewProps> = ({ locations, setLocations }) => {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/20 to-transparent" />
               
-              <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition duration-300">
+              {/* View Icon Overlay */}
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-500 bg-black/20 backdrop-blur-[1px]">
+                 <Eye size={48} className="text-white drop-shadow-lg" />
+              </div>
+
+              <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition duration-300 z-10" onClick={e => e.stopPropagation()}>
+                   <button 
+                    onClick={() => handleView(loc.id)}
+                    className="p-2 bg-stone-900/90 text-stone-200 rounded hover:bg-stone-700 transition shadow-lg"
+                    title="Ler Detalhes"
+                  >
+                    <Eye size={18} />
+                  </button>
                    <button 
                     onClick={() => handleEdit(loc)}
                     className="p-2 bg-stone-900/90 text-emerald-500 rounded hover:bg-emerald-700 hover:text-white transition shadow-lg"
+                    title="Editar"
                   >
                     <MapPin size={18} />
                   </button>
                   <button 
                     onClick={() => handleDelete(loc.id)}
                     className="p-2 bg-stone-900/90 text-stone-500 rounded hover:bg-red-900 hover:text-white transition shadow-lg"
+                    title="Apagar"
                   >
                     <Trash2 size={18} />
                   </button>
