@@ -266,7 +266,7 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
 
             .print-content {
                 font-size: 12pt;
-                line-height: 1.35; /* Spacing tight like a book */
+                line-height: 1;
                 text-align: justify;
                 color: black;
             }
