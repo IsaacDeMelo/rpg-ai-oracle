@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { StoryPage } from '../types';
-import { Feather, ChevronLeft, ChevronRight, Plus, Trash2, Save, BookOpen, Sparkles, Loader2, Check } from 'lucide-react';
+import { Feather, ChevronLeft, ChevronRight, Plus, Trash2, Save, BookOpen, Sparkles, Loader2, Check, Printer } from 'lucide-react';
 import { summarizeStoryForLore } from '../services/geminiService';
 
 interface StoryViewProps {
@@ -146,10 +146,14 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
     }
   };
 
+  const handlePrintChapter = () => {
+    window.print();
+  };
+
   return (
     <div className="flex flex-col h-full w-full relative" style={{ perspective: '2000px' }}>
       
-      {/* Styles for specialized animations */}
+      {/* Styles for specialized animations & PRINT */}
       <style>{`
         .book-enter {
             transform-origin: left center;
@@ -171,7 +175,73 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
         .flipping-prev {
             transform: rotateY(90deg);
         }
+
+        /* PRINT STYLES - A4 Book Format */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-container, #print-container * {
+                visibility: visible;
+            }
+            #print-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white;
+                color: black;
+                font-family: 'Crimson Text', serif;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            
+            /* Page Settings */
+            @page {
+                size: A4;
+                margin: 2.5cm 2cm;
+            }
+
+            .print-chapter-title {
+                text-align: center;
+                font-family: 'Cinzel', serif;
+                font-size: 24pt;
+                font-weight: 700;
+                margin-bottom: 2cm;
+                text-transform: uppercase;
+            }
+
+            .print-content {
+                font-size: 12pt;
+                line-height: 1.6;
+                text-align: justify;
+            }
+
+            .print-content p {
+                margin-bottom: 1em;
+                text-indent: 2em;
+            }
+            
+            /* Drop Cap for first paragraph */
+            .print-content p:first-of-type::first-letter {
+                font-size: 3em;
+                float: left;
+                margin-right: 0.1em;
+                line-height: 0.8;
+                font-family: 'Cinzel', serif;
+            }
+        }
       `}</style>
+
+      {/* HIDDEN PRINT CONTAINER */}
+      <div id="print-container" className="hidden">
+        <div className="print-chapter-title">{currentPage.title}</div>
+        <div className="print-content">
+            {currentPage.content.split('\n').map((para, i) => (
+                para.trim() ? <p key={i}>{para}</p> : <br key={i}/>
+            ))}
+        </div>
+      </div>
 
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
@@ -275,6 +345,15 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
 
             {/* Magical Divider */}
              <div className="h-8 w-px bg-stone-700 ml-2"></div>
+
+             <button 
+                onClick={handlePrintChapter}
+                disabled={isFlipping}
+                className="text-stone-400 hover:text-white transition hover:scale-110 p-2"
+                title="Exportar PDF (A4)"
+            >
+                <Printer size={24} />
+            </button>
 
             <button 
                 onClick={handleSummarizeToLore}
