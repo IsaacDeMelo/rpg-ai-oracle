@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StoryPage } from '../types';
-import { Feather, ChevronLeft, ChevronRight, Plus, Trash2, Save, BookOpen, Sparkles, Loader2, Check, Printer } from 'lucide-react';
-import { summarizeStoryForLore } from '../services/geminiService';
+import { Feather, ChevronLeft, ChevronRight, Plus, Trash2, Save, BookOpen, Sparkles, Loader2, Check, Printer, Wand2 } from 'lucide-react';
+import { summarizeStoryForLore, improveNarrative } from '../services/geminiService';
 
 interface StoryViewProps {
   pages: StoryPage[];
@@ -28,6 +28,10 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
   // Summary state
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summaryStatus, setSummaryStatus] = useState<'idle' | 'success'>('idle');
+
+  // Rewrite State
+  const [isRewriting, setIsRewriting] = useState(false);
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   // Trigger open animation on mount
   useEffect(() => {
@@ -144,6 +148,51 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
     } finally {
       setIsSummarizing(false);
     }
+  };
+
+  const handleSmartRewrite = async () => {
+      if (isRewriting || !textAreaRef.current) return;
+
+      const textarea = textAreaRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const hasSelection = start !== end;
+      
+      const textToImprove = hasSelection 
+          ? currentPage.content.substring(start, end)
+          : currentPage.content;
+
+      if (!textToImprove.trim()) {
+          alert("A página está em branco. Escreva algo para a magia atuar.");
+          return;
+      }
+
+      const confirmMsg = hasSelection 
+          ? "Reescrever apenas o trecho selecionado para corrigir fluidez e gramática?"
+          : "Reescrever TODO o capítulo para corrigir fluidez e gramática? (Isso substituirá o texto atual)";
+
+      if (!window.confirm(confirmMsg)) return;
+
+      setIsRewriting(true);
+
+      try {
+          const polishedText = await improveNarrative(textToImprove, worldLore);
+          
+          let newContent = "";
+          if (hasSelection) {
+              // Replace only selected part
+              newContent = currentPage.content.substring(0, start) + polishedText + currentPage.content.substring(end);
+          } else {
+              // Replace all
+              newContent = polishedText;
+          }
+
+          handleUpdate('content', newContent);
+      } catch (e) {
+          alert("A pena mágica falhou.");
+      } finally {
+          setIsRewriting(false);
+      }
   };
 
   const handlePrintChapter = () => {
@@ -292,6 +341,7 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
 
                 {/* Main Text Area */}
                 <textarea 
+                    ref={textAreaRef}
                     className="flex-1 w-full max-w-none bg-transparent resize-none focus:outline-none text-stone-900 font-serif text-xl leading-relaxed custom-scrollbar placeholder-stone-400/50"
                     placeholder="A tinta aguarda..."
                     value={currentPage.content}
@@ -360,6 +410,19 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
                 title="Exportar PDF (A4)"
             >
                 <Printer size={24} />
+            </button>
+
+             <button 
+                onClick={handleSmartRewrite}
+                disabled={isRewriting || isFlipping}
+                className="p-2 text-violet-400 hover:text-violet-200 transition hover:scale-110 relative group"
+                title="Reescrever Texto Selecionado (IA)"
+            >
+                {isRewriting ? <Loader2 size={24} className="animate-spin text-violet-500" /> : <Wand2 size={24} />}
+                {/* Tooltip for functionality explanation */}
+                 <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-black/90 text-stone-300 text-[10px] p-2 rounded w-40 text-center hidden group-hover:block z-[100] border border-stone-700 pointer-events-none">
+                    Selecione um texto para reescrever. Se nada for selecionado, reescreve a página.
+                </div>
             </button>
 
             <button 

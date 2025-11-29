@@ -236,3 +236,41 @@ export const updateCharacterBackstory = async (
     return "Erro ao conectar com a IA.";
   }
 };
+
+export const improveNarrative = async (text: string, worldLore: string): Promise<string> => {
+  if (!process.env.API_KEY) return "Erro: API Key ausente.";
+
+  try {
+    const prompt = `
+      Atue como um Editor Literário de Best-Sellers de Fantasia.
+      
+      Sua missão é polir o seguinte trecho de história.
+      
+      INSTRUÇÕES CRÍTICAS (LEIA COM ATENÇÃO):
+      1. CORRIJA todos os erros de português, gramática e pontuação.
+      2. MELHORE A FLUIDEZ: Remova repetições de palavras e frases arrastadas.
+      3. AUMENTE A EMOÇÃO: Use vocabulário mais sensorial e imersivo.
+      4. ***PROIBIDO ALTERAR OS FATOS***: Não invente novos eventos, não mude quem fez o quê, não mude os nomes. Mantenha a sequência exata de acontecimentos, apenas melhore COMO ela é contada.
+      5. Retorne APENAS o texto reescrito, sem introduções ou notas.
+
+      CONTEXTO DO MUNDO (Para tom):
+      ${worldLore || "Fantasia Medieval."}
+
+      TEXTO ORIGINAL (RASCUNHO):
+      ${text}
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        temperature: 0.7, // Um pouco mais criativo que summary, mas seguro para não alucinar fatos
+      },
+    });
+
+    return response.text?.trim() || text;
+  } catch (error) {
+    console.error("Erro na API Gemini (Improve Narrative):", error);
+    return text; // Return original if fail
+  }
+};
