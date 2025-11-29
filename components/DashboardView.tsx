@@ -1,5 +1,6 @@
-import React from 'react';
-import { Users, Map, Book, MessageCircle, Swords, Feather, ChevronRight, Crown, Star } from 'lucide-react';
+
+import React, { useEffect, useState } from 'react';
+import { Users, Map, Book, MessageCircle, Swords, Feather, ChevronRight, Crown, Star, Database } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface DashboardViewProps {
@@ -12,6 +13,29 @@ interface DashboardViewProps {
 }
 
 const DashboardView: React.FC<DashboardViewProps> = ({ setActiveView, stats }) => {
+  const [storageUsage, setStorageUsage] = useState<{used: number, percent: number, total: string}>({ used: 0, percent: 0, total: '0 KB' });
+
+  useEffect(() => {
+    const calculateStorage = () => {
+        let total = 0;
+        for (const key in localStorage) {
+            if (localStorage.hasOwnProperty(key)) {
+                total += (localStorage[key].length * 2); // UTF-16 = 2 bytes per char
+            }
+        }
+        // Limit usually around 5MB (5 * 1024 * 1024 bytes)
+        const limit = 5 * 1024 * 1024; 
+        const usedKB = (total / 1024).toFixed(2);
+        const percent = Math.min(100, (total / limit) * 100);
+        
+        setStorageUsage({
+            used: total,
+            percent: percent,
+            total: `${usedKB} KB`
+        });
+    };
+    calculateStorage();
+  }, [stats]); // Recalculate when stats change (implies data change)
   
   const FeatureCard = ({ icon, title, desc, action, view, color }: { icon: React.ReactNode, title: string, desc: string, action: string, view: ViewState, color: string }) => (
     <div 
@@ -73,7 +97,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ setActiveView, stats }) =
             </div>
             
             {/* Stats Bar */}
-            <div className="absolute bottom-0 left-0 w-full bg-stone-900/80 border-t border-stone-800 py-4 flex justify-center gap-8 md:gap-16 text-stone-500 text-xs font-mono uppercase tracking-widest backdrop-blur-sm">
+            <div className="absolute bottom-0 left-0 w-full bg-stone-900/80 border-t border-stone-800 py-4 px-4 flex flex-wrap justify-center gap-8 md:gap-16 text-stone-500 text-xs font-mono uppercase tracking-widest backdrop-blur-sm">
                 <div className="flex flex-col items-center">
                     <span className="text-lg font-bold text-stone-300">{stats.chars}</span>
                     <span>Personagens</span>
@@ -85,6 +109,26 @@ const DashboardView: React.FC<DashboardViewProps> = ({ setActiveView, stats }) =
                 <div className="flex flex-col items-center">
                     <span className="text-lg font-bold text-stone-300">{stats.pages}</span>
                     <span>Páginas Escritas</span>
+                </div>
+                
+                {/* Storage Meter */}
+                <div className="flex flex-col items-center min-w-[120px] group relative">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Database size={14} className={storageUsage.percent > 80 ? "text-red-500" : "text-emerald-500"}/>
+                        <span className="text-stone-300 font-bold">{storageUsage.total}</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-stone-800 rounded-full overflow-hidden border border-stone-700">
+                        <div 
+                            className={`h-full transition-all duration-1000 ${storageUsage.percent > 90 ? 'bg-red-600' : storageUsage.percent > 50 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
+                            style={{ width: `${Math.max(2, storageUsage.percent)}%` }}
+                        ></div>
+                    </div>
+                    <span className="mt-1 text-[10px]">Armazenamento Local ({storageUsage.percent.toFixed(1)}%)</span>
+                    
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full mb-2 bg-black/90 text-stone-300 p-2 rounded text-[10px] w-48 hidden group-hover:block z-50 border border-stone-700 pointer-events-none normal-case leading-snug">
+                        O limite do navegador é aprox. 5MB. Evite salvar imagens grandes; use links externos.
+                    </div>
                 </div>
             </div>
         </div>

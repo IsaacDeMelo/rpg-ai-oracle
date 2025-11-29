@@ -201,7 +201,7 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
             /* Page Settings */
             @page {
                 size: A4;
-                margin: 2.5cm 2cm;
+                margin: 2cm 2cm;
             }
 
             .print-chapter-title {
@@ -209,6 +209,7 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
                 font-family: 'Cinzel', serif;
                 font-size: 24pt;
                 font-weight: 700;
+                margin-top: 1cm;
                 margin-bottom: 2cm;
                 text-transform: uppercase;
                 color: black;
@@ -216,20 +217,22 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
 
             .print-content {
                 font-size: 12pt;
-                line-height: 1.6;
+                line-height: 1.35; /* Spacing tight like a book */
                 text-align: justify;
                 color: black;
             }
 
             .print-content p {
-                margin-bottom: 1em;
-                text-indent: 2em;
+                margin-bottom: 0; /* No space between paragraphs */
+                margin-top: 0;
+                text-indent: 1.5em; /* Standard book indentation */
             }
             
             /* Drop Cap for first paragraph */
             .print-content p:first-of-type::first-letter {
-                font-size: 3em;
+                font-size: 3.5em;
                 float: left;
+                margin-top: -0.1em;
                 margin-right: 0.1em;
                 line-height: 0.8;
                 font-family: 'Cinzel', serif;
@@ -264,7 +267,7 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
         
         {/* The "Paper" */}
         <div className={`
-            relative w-full h-full min-h-[90vh] bg-[#f5f5f4] shadow-[0_0_50px_rgba(0,0,0,0.8)] 
+            relative w-full h-full min-h-[200vh] bg-[#f5f5f4] shadow-[0_0_50px_rgba(0,0,0,0.8)] 
             flex flex-col border-l-[12px] border-stone-800/20 rounded-r-md overflow-hidden
             page-flip-container
             ${isFlipping ? (direction === 'next' ? 'flipping-next' : 'flipping-prev') : ''}
