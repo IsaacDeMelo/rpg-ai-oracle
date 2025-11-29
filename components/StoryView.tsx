@@ -185,6 +185,7 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
                 visibility: visible;
             }
             #print-container {
+                display: block !important;
                 position: absolute;
                 left: 0;
                 top: 0;
@@ -194,6 +195,7 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
                 font-family: 'Crimson Text', serif;
                 padding: 0 !important;
                 margin: 0 !important;
+                z-index: 9999;
             }
             
             /* Page Settings */
@@ -209,12 +211,14 @@ const StoryView: React.FC<StoryViewProps> = ({ pages, setPages, onAddToLore, wor
                 font-weight: 700;
                 margin-bottom: 2cm;
                 text-transform: uppercase;
+                color: black;
             }
 
             .print-content {
                 font-size: 12pt;
                 line-height: 1.6;
                 text-align: justify;
+                color: black;
             }
 
             .print-content p {
