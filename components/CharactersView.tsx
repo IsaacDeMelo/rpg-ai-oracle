@@ -733,69 +733,78 @@ const CharactersView: React.FC<CharactersViewProps> = ({ characters, setCharacte
             {viewMode === 'grid' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                     {filteredCharacters.map(char => (
-                    <div key={char.id} className="bg-stone-900 group relative rounded-sm shadow-xl overflow-hidden transition-all duration-300 hover:-translate-y-1 border border-stone-800 hover:border-amber-600/50">
-                        {/* Click to View */}
-                        <div onClick={() => handleView(char.id)} className="cursor-pointer">
-                            <div className="h-64 overflow-hidden relative border-b-4 border-amber-900/80">
-                            <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover group-hover:scale-110 transition duration-700 filter grayscale-[20%] group-hover:grayscale-0" onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/400/200?grayscale'; }} />
-                            <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-transparent to-transparent opacity-90" />
+                    <div key={char.id} className="bg-stone-900 group relative rounded-sm shadow-xl overflow-hidden transition-all duration-300 hover:-translate-y-1 border border-stone-800 hover:border-amber-600/50 flex flex-col h-full">
+                        {/* Click to View Wrapper - Flex Grows to push footer down */}
+                        <div onClick={() => handleView(char.id)} className="cursor-pointer flex-1 flex flex-col">
                             
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-500 bg-black/20 backdrop-blur-[2px]">
-                                <Eye size={48} className="text-white drop-shadow-lg" />
-                            </div>
+                            {/* Image Section */}
+                            <div className="h-64 overflow-hidden relative border-b-4 border-amber-900/80 shrink-0">
+                                <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover group-hover:scale-110 transition duration-700 filter grayscale-[20%] group-hover:grayscale-0" onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/400/200?grayscale'; }} />
+                                <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-transparent to-transparent opacity-90" />
+                                
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-500 bg-black/20 backdrop-blur-[2px]">
+                                    <Eye size={48} className="text-white drop-shadow-lg" />
+                                </div>
 
-                            <div className="absolute bottom-0 left-0 w-full p-4">
-                                <h3 className="text-2xl font-bold text-stone-100 font-cinzel drop-shadow-md">{char.name}</h3>
-                                <div className="flex justify-between items-end">
-                                    {(char.race || char.height) && (
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="h-px w-6 bg-amber-500/50 inline-block"></span>
-                                        <p className="text-amber-500 text-xs font-bold uppercase tracking-widest font-sans">{char.race}</p>
+                                <div className="absolute bottom-0 left-0 w-full p-4">
+                                    <h3 className="text-2xl font-bold text-stone-100 font-cinzel drop-shadow-md">{char.name}</h3>
+                                    <div className="flex justify-between items-end">
+                                        {(char.race || char.height) && (
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="h-px w-6 bg-amber-500/50 inline-block"></span>
+                                            <p className="text-amber-500 text-xs font-bold uppercase tracking-widest font-sans">{char.race}</p>
+                                        </div>
+                                        )}
+                                        {char.money && (
+                                            <div className="flex items-center gap-1 text-amber-300 bg-black/40 px-2 py-0.5 rounded border border-amber-900/30">
+                                                <Coins size={10} /> <span className="text-xs font-mono">{char.money}</span>
+                                            </div>
+                                        )}
                                     </div>
-                                    )}
-                                    {char.money && (
-                                        <div className="flex items-center gap-1 text-amber-300 bg-black/40 px-2 py-0.5 rounded border border-amber-900/30">
-                                            <Coins size={10} /> <span className="text-xs font-mono">{char.money}</span>
-                                        </div>
-                                    )}
                                 </div>
-                            </div>
                             </div>
                             
-                            <div className="p-5 space-y-4">
-                            <p className="text-stone-400 text-sm leading-relaxed line-clamp-3 italic font-serif">"{char.description}"</p>
-                            
-                            <div className="grid grid-cols-2 gap-3 pt-2">
-                                {char.attributes.slice(0, 4).map((attr, idx) => (
-                                <div key={idx} className="bg-black/20 p-2 rounded border border-stone-800 flex justify-between items-center">
-                                    <span className="text-stone-500 text-[10px] uppercase font-bold tracking-wider">{attr.key.slice(0,8)}</span>
-                                    <span className="text-amber-100 font-mono font-bold">{attr.value}</span>
-                                </div>
-                                ))}
-                            </div>
-
-                            {/* Relationship Preview Indicator */}
-                            {char.relationships && char.relationships.length > 0 && (
-                                <div className="flex items-center gap-2 pt-2 border-t border-stone-800/50">
-                                    <Heart size={12} className="text-pink-700" />
-                                    <span className="text-xs text-stone-500">{char.relationships.length} Vínculos</span>
-                                </div>
-                            )}
-
-                            {/* Mini Inventory Preview */}
-                            {char.items && char.items.length > 0 && typeof char.items[0] !== 'string' && (
-                                <div className="flex gap-1 overflow-hidden pt-2 h-10">
-                                    {(char.items as Item[]).slice(0,6).map((item, i) => (
-                                        <div key={i} className="aspect-square h-full bg-stone-950 border border-stone-800 rounded flex items-center justify-center relative" title={`${item.name} (x${item.quantity})`}>
-                                            {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover opacity-70"/> : <div className="w-1 h-1 bg-stone-700 rounded-full"/>}
+                            {/* Body Content - Grows to fill space */}
+                            <div className="p-5 space-y-4 flex-1 flex flex-col">
+                                <p className="text-stone-400 text-sm leading-relaxed line-clamp-3 italic font-serif">"{char.description}"</p>
+                                
+                                {/* Stats Section - Pushed to bottom of content area */}
+                                <div className="mt-auto pt-2 space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {char.attributes.slice(0, 4).map((attr, idx) => (
+                                        <div key={idx} className="bg-black/20 p-2 rounded border border-stone-800 flex justify-between items-center">
+                                            <span className="text-stone-500 text-[10px] uppercase font-bold tracking-wider">{attr.key.slice(0,8)}</span>
+                                            <span className="text-amber-100 font-mono font-bold">{attr.value}</span>
                                         </div>
-                                    ))}
+                                        ))}
+                                    </div>
+
+                                    <div className="flex items-center justify-between border-t border-stone-800/50 pt-2">
+                                        {/* Relationship Preview Indicator */}
+                                        {char.relationships && char.relationships.length > 0 ? (
+                                            <div className="flex items-center gap-2">
+                                                <Heart size={12} className="text-pink-700" />
+                                                <span className="text-xs text-stone-500">{char.relationships.length} Vínculos</span>
+                                            </div>
+                                        ) : <div></div>}
+
+                                        {/* Mini Inventory Preview */}
+                                        {char.items && char.items.length > 0 && typeof char.items[0] !== 'string' && (
+                                            <div className="flex gap-1 overflow-hidden h-8">
+                                                {(char.items as Item[]).slice(0,4).map((item, i) => (
+                                                    <div key={i} className="aspect-square h-full bg-stone-950 border border-stone-800 rounded flex items-center justify-center relative" title={`${item.name} (x${item.quantity})`}>
+                                                        {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover opacity-70"/> : <div className="w-1 h-1 bg-stone-700 rounded-full"/>}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            )}
                             </div>
                         </div>
 
-                        <div className="flex justify-between items-center pt-2 pb-4 px-5 border-t border-stone-800 bg-stone-950/50">
+                        {/* Footer Actions - Fixed at bottom */}
+                        <div className="flex justify-between items-center pt-2 pb-4 px-5 border-t border-stone-800 bg-stone-950/50 shrink-0">
                             <button onClick={() => handleQuickSync(char)} disabled={syncingIds.has(char.id)} className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-3 py-2 rounded transition border border-transparent ${!worldLore ? 'text-stone-600 cursor-not-allowed' : 'text-violet-400 hover:bg-violet-900/20'}`}>
                                 <Sparkles size={14} className={syncingIds.has(char.id) ? "animate-spin" : ""} /> {syncingIds.has(char.id) ? "..." : "Sincronizar"}
                             </button>
